@@ -13,6 +13,7 @@
 #                          of silently shipping an unsigned app.
 
 stages:
+  - test
   - build
   - release
 
@@ -31,6 +32,22 @@ stages:
   before_script:
     - export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$HOME/.local/bin:$PATH"
     - 'echo "xcode: $(xcodebuild -version | head -1)"'
+
+# Run the unit + (Accessibility-gated) integration tests. The test host skips
+# all launch side effects under XCTest, so it won't hang the headless runner.
+test:macos:
+  <<: *macos_base
+  stage: test
+  script:
+    - >
+      xcodebuild test -project Lineup/Lineup.xcodeproj -scheme Lineup
+      -configuration Debug -destination 'platform=macOS'
+      -resultBundlePath build/TestResults
+      CODE_SIGNING_ALLOWED=NO | tee build/test.log
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_TAG
 
 build:macos:
   <<: *macos_base
@@ -52,10 +69,19 @@ build:macos:
 release:macos:
   <<: *macos_base
   stage: release
+  # Don't sign/notarize/publish a release that hasn't passed tests.
+  needs:
+    - job: test:macos
+      artifacts: false
   variables:
     # Customer-facing build: a missing/partial cert set must fail, not skip.
     STRICT: "1"
   script:
+    # Inject the user-facing version from the tag (v1.2.0 -> 1.2.0) and a
+    # monotonic build number from the pipeline, so every release is uniquely
+    # and correctly versioned.
+    - export MARKETING_VERSION="${CI_COMMIT_TAG#v}"
+    - export CURRENT_PROJECT_VERSION="${CI_PIPELINE_IID}"
     - ./scripts/build-macos.sh
     - ./scripts/sign-and-notarize-macos.sh
     - ./scripts/package-dmg-macos.sh

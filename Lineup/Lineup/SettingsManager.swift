@@ -513,26 +513,29 @@ extension AppSettings {
         // Back-compat: an older build stored a showWindowPreviews bool.
         let legacy = try decoder.container(keyedBy: LegacyKeys.self)
         let legacyPreviews = try legacy.decodeIfPresent(Bool.self, forKey: .showWindowPreviews) ?? false
+        // `try?` per field so one unreadable value (an unknown enum raw from a
+        // newer/older build, a removed case) falls back to its default instead of
+        // throwing and wiping the entire configuration.
         self.init(
-            modifierKey: try c.decodeIfPresent(ModifierKey.self, forKey: .modifierKey) ?? d.modifierKey,
-            triggerKey: try c.decodeIfPresent(TriggerKey.self, forKey: .triggerKey) ?? d.triggerKey,
-            appTitleConfigs: try c.decodeIfPresent([String: AppTitleConfig].self, forKey: .appTitleConfigs) ?? d.appTitleConfigs,
-            defaultTitleStrategy: try c.decodeIfPresent(TitleExtractionStrategy.self, forKey: .defaultTitleStrategy) ?? d.defaultTitleStrategy,
-            defaultCustomSeparator: try c.decodeIfPresent(String.self, forKey: .defaultCustomSeparator) ?? d.defaultCustomSeparator,
-            ct2Enabled: try c.decodeIfPresent(Bool.self, forKey: .ct2Enabled) ?? d.ct2Enabled,
-            ct2ModifierKey: try c.decodeIfPresent(ModifierKey.self, forKey: .ct2ModifierKey) ?? d.ct2ModifierKey,
-            ct2TriggerKey: try c.decodeIfPresent(TriggerKey.self, forKey: .ct2TriggerKey) ?? d.ct2TriggerKey,
-            launchAtStartup: try c.decodeIfPresent(Bool.self, forKey: .launchAtStartup) ?? d.launchAtStartup,
-            showNumberKeys: try c.decodeIfPresent(Bool.self, forKey: .showNumberKeys) ?? d.showNumberKeys,
-            switcherFollowActiveWindow: try c.decodeIfPresent(Bool.self, forKey: .switcherFollowActiveWindow) ?? d.switcherFollowActiveWindow,
-            showWindowsFromAllSpaces: try c.decodeIfPresent(Bool.self, forKey: .showWindowsFromAllSpaces) ?? d.showWindowsFromAllSpaces,
-            windowDisplayStyle: try c.decodeIfPresent(WindowDisplayStyle.self, forKey: .windowDisplayStyle)
+            modifierKey: (try? c.decodeIfPresent(ModifierKey.self, forKey: .modifierKey)) ?? d.modifierKey,
+            triggerKey: (try? c.decodeIfPresent(TriggerKey.self, forKey: .triggerKey)) ?? d.triggerKey,
+            appTitleConfigs: (try? c.decodeIfPresent([String: AppTitleConfig].self, forKey: .appTitleConfigs)) ?? d.appTitleConfigs,
+            defaultTitleStrategy: (try? c.decodeIfPresent(TitleExtractionStrategy.self, forKey: .defaultTitleStrategy)) ?? d.defaultTitleStrategy,
+            defaultCustomSeparator: (try? c.decodeIfPresent(String.self, forKey: .defaultCustomSeparator)) ?? d.defaultCustomSeparator,
+            ct2Enabled: (try? c.decodeIfPresent(Bool.self, forKey: .ct2Enabled)) ?? d.ct2Enabled,
+            ct2ModifierKey: (try? c.decodeIfPresent(ModifierKey.self, forKey: .ct2ModifierKey)) ?? d.ct2ModifierKey,
+            ct2TriggerKey: (try? c.decodeIfPresent(TriggerKey.self, forKey: .ct2TriggerKey)) ?? d.ct2TriggerKey,
+            launchAtStartup: (try? c.decodeIfPresent(Bool.self, forKey: .launchAtStartup)) ?? d.launchAtStartup,
+            showNumberKeys: (try? c.decodeIfPresent(Bool.self, forKey: .showNumberKeys)) ?? d.showNumberKeys,
+            switcherFollowActiveWindow: (try? c.decodeIfPresent(Bool.self, forKey: .switcherFollowActiveWindow)) ?? d.switcherFollowActiveWindow,
+            showWindowsFromAllSpaces: (try? c.decodeIfPresent(Bool.self, forKey: .showWindowsFromAllSpaces)) ?? d.showWindowsFromAllSpaces,
+            windowDisplayStyle: (try? c.decodeIfPresent(WindowDisplayStyle.self, forKey: .windowDisplayStyle))
                 ?? (legacyPreviews ? .preview : d.windowDisplayStyle),
-            followAcrossDesktops: try c.decodeIfPresent(Bool.self, forKey: .followAcrossDesktops) ?? d.followAcrossDesktops,
-            doubleTapToHold: try c.decodeIfPresent(Bool.self, forKey: .doubleTapToHold) ?? d.doubleTapToHold,
-            switcherVerticalPosition: try c.decodeIfPresent(Double.self, forKey: .switcherVerticalPosition) ?? d.switcherVerticalPosition,
-            switcherHeaderStyle: try c.decodeIfPresent(SwitcherHeaderStyle.self, forKey: .switcherHeaderStyle) ?? d.switcherHeaderStyle,
-            colorScheme: try c.decodeIfPresent(ColorScheme.self, forKey: .colorScheme) ?? d.colorScheme
+            followAcrossDesktops: (try? c.decodeIfPresent(Bool.self, forKey: .followAcrossDesktops)) ?? d.followAcrossDesktops,
+            doubleTapToHold: (try? c.decodeIfPresent(Bool.self, forKey: .doubleTapToHold)) ?? d.doubleTapToHold,
+            switcherVerticalPosition: (try? c.decodeIfPresent(Double.self, forKey: .switcherVerticalPosition)) ?? d.switcherVerticalPosition,
+            switcherHeaderStyle: (try? c.decodeIfPresent(SwitcherHeaderStyle.self, forKey: .switcherHeaderStyle)) ?? d.switcherHeaderStyle,
+            colorScheme: (try? c.decodeIfPresent(ColorScheme.self, forKey: .colorScheme)) ?? d.colorScheme
         )
     }
 }

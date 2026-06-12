@@ -269,7 +269,7 @@
 "no_app_configs_message" = "No app-specific configurations";
 
 // MARK: - About Page
-"version" = "Version 1.0.0";
+"version" = "Version %@";
 "app_description" = "A fast, list-only window switcher for macOS. Flip through an app's windows — or all your apps — in a clean vertical list, with windows from every desktop and the Dock.";
 "main_features" = "Features";
 "feature_1_title" = "Same-app window switcher";

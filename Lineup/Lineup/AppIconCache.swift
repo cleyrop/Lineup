@@ -33,7 +33,7 @@ class AppIconCache: ObservableObject {
     
     // Use CacheItem to track access time for LRU implementation
     private var iconCache: [pid_t: CacheItem] = [:]
-    private let cacheQueue = DispatchQueue(label: "com.devswitcher2.iconcache", qos: .utility)
+    private let cacheQueue = DispatchQueue(label: "com.cleyrop.lineup.iconcache", qos: .utility)
     private var cleanupTimer: Timer? // Timer for periodic cleanup
     
     private init() {

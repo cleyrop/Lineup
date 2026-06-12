@@ -37,9 +37,10 @@ struct CGSWindowCaptureOptions: OptionSet {
 /// Screenshot the given windows. Unlike CGWindowListCreateImage this captures
 /// minimized and other-Space windows. Requires Screen Recording permission to
 /// return real content. * macOS 10.10+
+// Returns nil (not a non-optional that would crash) when the window id is stale.
 @_silgen_name("CGSHWCaptureWindowList")
 func CGSHWCaptureWindowList(_ cid: CGSConnectionID, _ windowList: UnsafeMutablePointer<CGWindowID>,
-                            _ windowCount: UInt32, _ options: CGSWindowCaptureOptions) -> Unmanaged<CFArray>
+                            _ windowCount: UInt32, _ options: CGSWindowCaptureOptions) -> Unmanaged<CFArray>?
 
 // MARK: - Spaces
 
@@ -108,6 +109,10 @@ private let _slpsPostEventRecordTo: SLPSPostEventRecordToFn? = {
     guard let sym = dlsym(RTLD_DEFAULT_HANDLE, "SLPSPostEventRecordTo") else { return nil }
     return unsafeBitCast(sym, to: SLPSPostEventRecordToFn.self)
 }()
+
+/// Whether the SkyLight front-process SPI resolved. If false (a future macOS
+/// removed/renamed it), callers fall back to the public AX activation path.
+let slpsAvailable: Bool = _slpsSetFrontProcessWithOptions != nil && _slpsPostEventRecordTo != nil
 
 /// Focuses the front process, scoped to a window id. Switching to a window on
 /// another Space is a side-effect of this call (there is no public Set-current-

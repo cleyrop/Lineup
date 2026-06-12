@@ -382,7 +382,11 @@ struct LocalizedStrings {
     static let colorSchemeSampleWindow = "color_scheme_sample_window".localized
     
     // MARK: - About Page
-    static let version = "version".localized
+    /// Read from the bundle so it always matches the shipped build.
+    static var version: String {
+        let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+        return "version".localized(with: v)
+    }
     static let appDescription = "app_description".localized
     static let mainFeatures = "main_features".localized
     static let feature1Title = "feature_1_title".localized

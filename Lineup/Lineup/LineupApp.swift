@@ -34,6 +34,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // When hosting unit tests, do nothing — no status item, hotkeys, or the
+        // modal Accessibility prompt (which would hang a headless CI runner). The
+        // tests use @testable import and drive types directly.
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            return
+        }
+
         // Diagnostic builds: make stdout unbuffered so logs flush live to a
         // redirected file (Swift print() block-buffers to a non-tty otherwise).
 #if DEBUG
@@ -189,43 +196,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     
     // MARK: - Application Restart
     func restartApplication() {
-        Logger.log("🔄 Restarting application...")
-        
-        // Get the path to the current application
-        let appPath = Bundle.main.bundlePath
-        
-        // Use shell script to restart the application
-        let restartScript = """
-        #!/bin/bash
-        sleep 1
-        open "\(appPath)"
-        """
-        
-        // Write the script to a temporary file
-        let tempURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("restart_devswitcher2.sh")
-        
-        do {
-            try restartScript.write(to: tempURL, atomically: true, encoding: .utf8)
-            
-            // Make the script executable
-            let process = Process()
-            process.launchPath = "/bin/chmod"
-            process.arguments = ["+x", tempURL.path]
-            process.launch()
-            process.waitUntilExit()
-            
-            // Execute the restart script
-            let restartProcess = Process()
-            restartProcess.launchPath = "/bin/bash"
-            restartProcess.arguments = [tempURL.path]
-            restartProcess.launch()
-            
-            // Quit the current application
-            NSApplication.shared.terminate(nil)
-            
-        } catch {
-            Logger.log("❌ Failed to restart application: \(error)")
-        }
+        relaunchApp()
     }
     
     // MARK: - NSWindowDelegate

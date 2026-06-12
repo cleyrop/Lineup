@@ -41,6 +41,14 @@ struct AppInfo {
     let isActive: Bool    // Whether it's the currently active app
 }
 
+// MARK: - Switcher Panel
+/// A borderless, non-activating panel that can still become key, so the switcher
+/// receives and swallows keyboard input instead of leaking it to the frontmost app.
+final class SwitcherPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
+}
+
 class WindowManager: ObservableObject {
     @Published var windows: [WindowInfo] = []
     @Published var isShowingSwitcher = false
@@ -339,18 +347,23 @@ class WindowManager: ObservableObject {
     
     private func setupSwitcherWindow() {
         let contentRect = NSRect(x: 0, y: 0, width: 600, height: 400)
-        switcherWindow = NSWindow(
+        // A non-activating panel that CAN become key: this lets the local event
+        // monitor receive AND consume keystrokes (arrows/Enter/Esc), so they no
+        // longer leak into the frontmost app the way they did with a borderless
+        // NSWindow that could never be key.
+        switcherWindow = SwitcherPanel(
             contentRect: contentRect,
-            styleMask: [.borderless],
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
-        
+
         switcherWindow?.isReleasedWhenClosed = false
         switcherWindow?.level = .floating
         switcherWindow?.backgroundColor = NSColor.clear
         switcherWindow?.hasShadow = true
         switcherWindow?.isOpaque = false
+        (switcherWindow as? NSPanel)?.hidesOnDeactivate = false
         // Appear on every Space and over full-screen apps, and stay put during a
         // Space slide — so the switcher remains visible (and can animate) while
         // macOS transitions to another desktop, instead of vanishing.
@@ -360,7 +373,20 @@ class WindowManager: ObservableObject {
         // Initial content view will be set on first display
         switcherWindow?.contentView = NSView() // Temporary empty view
 
+        // In hold (peek) mode, clicking outside the panel cancels it.
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(switcherResignedKey),
+            name: NSWindow.didResignKeyNotification, object: switcherWindow
+        )
+
         // Position will be set when displaying
+    }
+
+    @objc private func switcherResignedKey() {
+        guard switcherHeld, isShowingSwitcher else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.hideSwitcherAsync(activate: false)
+        }
     }
 
     /// Fade the switcher in.
@@ -452,18 +478,14 @@ class WindowManager: ObservableObject {
             if posResult == .success, let position = positionValue {
                 var point = CGPoint.zero
                 if AXValueGetValue(position as! AXValue, .cgPoint, &point) {
-                    for screen in NSScreen.screens {
-                        if screen.frame.contains(point) {
-                            return screen
-                        }
-                    }
+                    return screenContaining(cgPoint: point)
                 }
             }
         }
-        
+
         return nil
     }
-    
+
     private func getWindowScreen(windowID: CGWindowID) -> NSScreen? {
         guard let windowList = CGWindowListCopyWindowInfo([.optionIncludingWindow], windowID) as? [[String: Any]],
               let windowInfo = windowList.first,
@@ -472,16 +494,17 @@ class WindowManager: ObservableObject {
               let y = bounds["Y"] as? CGFloat else {
             return nil
         }
-        
-        let windowPoint = CGPoint(x: x, y: y)
-        
-        for screen in NSScreen.screens {
-            if screen.frame.contains(windowPoint) {
-                return screen
-            }
-        }
-        
-        return nil
+        return screenContaining(cgPoint: CGPoint(x: x, y: y))
+    }
+
+    /// The screen containing a top-left-origin (CG/AX) global point. CG/AX use a
+    /// top-left origin on the primary display while NSScreen.frame is bottom-left,
+    /// so the Y must be flipped before testing — otherwise multi-display (and any
+    /// vertical arrangement) resolves to the wrong screen.
+    private func screenContaining(cgPoint: CGPoint) -> NSScreen? {
+        guard let primaryHeight = NSScreen.screens.first?.frame.maxY else { return nil }
+        let cocoaPoint = CGPoint(x: cgPoint.x, y: primaryHeight - cgPoint.y)
+        return NSScreen.screens.first { $0.frame.contains(cocoaPoint) }
     }
     
     private func getPrimaryScreen() -> NSScreen? {
@@ -859,6 +882,9 @@ class WindowManager: ObservableObject {
         var result = [AXUIElement]()
 
         let axApp = AXUIElementCreateApplication(pid)
+        // Cap how long we'll block on a (possibly beachballing) target app so it
+        // can never freeze the hotkey — degrade to fewer windows instead.
+        AXUIElementSetMessagingTimeout(axApp, 0.25)
         var windowsRef: CFTypeRef?
         if AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowsRef) == .success,
            let axWindows = windowsRef as? [AXUIElement] {
@@ -888,6 +914,7 @@ class WindowManager: ObservableObject {
         for axId: AXUIElementID in 0..<1000 {
             token.replaceSubrange(12..<20, with: withUnsafeBytes(of: axId) { Data($0) })
             if let element = _AXUIElementCreateWithRemoteToken(token as CFData)?.takeRetainedValue() {
+                AXUIElementSetMessagingTimeout(element, 0.1)
                 var subroleRef: CFTypeRef?
                 if AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subroleRef) == .success,
                    let subrole = subroleRef as? String,
@@ -938,7 +965,7 @@ class WindowManager: ObservableObject {
         var w = wid
         guard let images = CGSHWCaptureWindowList(
             CGS_CONNECTION, &w, 1, [.ignoreGlobalClipShape, .nominalResolution]
-        ).takeRetainedValue() as? [CGImage], let cg = images.first else {
+        )?.takeRetainedValue() as? [CGImage], let cg = images.first else {
             return nil
         }
         return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
@@ -1056,6 +1083,7 @@ class WindowManager: ObservableObject {
      /// live only on another Space.
      private func axWindowCount(_ pid: pid_t) -> Int {
         let axApp = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(axApp, 0.2)
         var ref: CFTypeRef?
         guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &ref) == .success,
               let axWindows = ref as? [AXUIElement] else {
@@ -1488,8 +1516,8 @@ class WindowManager: ObservableObject {
         switch event.type {
         case .keyUp:
             if event.keyCode == 53 { // ESC key
-                Logger.log("🔴 [\(source)] ESC key detected, closing DS2 switcher")
-                hideSwitcherAsync()
+                Logger.log("🔴 [\(source)] ESC — cancelling DS2 switcher")
+                hideSwitcherAsync(activate: false)
                 return nil
             }
             
@@ -1574,8 +1602,8 @@ class WindowManager: ObservableObject {
         switch event.type {
         case .keyUp:
             if event.keyCode == 53 { // ESC key
-                Logger.log("🔴 [\(source)] ESC key detected, closing CT2 switcher")
-                hideAppSwitcherAsync()
+                Logger.log("🔴 [\(source)] ESC — cancelling CT2 switcher")
+                hideAppSwitcherAsync(activate: false)
                 return nil
             }
             
@@ -1655,11 +1683,11 @@ class WindowManager: ObservableObject {
     
     // MARK: - Async Window Activation Optimization (Solution 2)
     
-    private func hideSwitcherAsync() {
+    /// Hide the DS2 switcher. `activate: false` cancels without switching windows
+    /// (used by Esc), so the switcher is a true preview you can back out of.
+    private func hideSwitcherAsync(activate: Bool = true) {
         guard isShowingSwitcher else { return }
-        
-        Logger.log("🚀 Async DS2 switcher hiding started")
-        
+
         isShowingSwitcher = false
         switcherHeld = false
 
@@ -1668,7 +1696,7 @@ class WindowManager: ObservableObject {
         cleanupEventMonitors()
         hotkeyManager?.reEnableHotkey()
 
-        let targetWindow = currentWindowIndex < windows.count ? windows[currentWindowIndex] : nil
+        let targetWindow = activate && currentWindowIndex < windows.count ? windows[currentWindowIndex] : nil
         // Ride the Space slide only when actually crossing desktops, so same-desktop
         // selection stays instant.
         let rideTransition = settingsManager.settings.followAcrossDesktops
@@ -1685,16 +1713,16 @@ class WindowManager: ObservableObject {
 
         dismissSwitcherWindow(rideTransition: rideTransition)
 
+        // Free the (potentially multi-MB thumbnail / AX-element) window list now.
+        windows.removeAll()
         DispatchQueue.global(qos: .utility).async {
             AppIconCache.shared.clearCache()
         }
     }
     
-    private func hideAppSwitcherAsync() {
+    private func hideAppSwitcherAsync(activate: Bool = true) {
         guard isShowingAppSwitcher else { return }
-        
-        Logger.log("🚀 Async CT2 switcher hiding started")
-        
+
         isShowingAppSwitcher = false
 
         stopModifierKeyWatchdog()
@@ -1704,9 +1732,9 @@ class WindowManager: ObservableObject {
         hotkeyManager?.resetCT2SwitcherState()
 
         // An app switch often crosses desktops; ride the slide when enabled.
-        let rideTransition = settingsManager.settings.followAcrossDesktops
+        let rideTransition = activate && settingsManager.settings.followAcrossDesktops
 
-        if currentAppIndex < apps.count {
+        if activate, currentAppIndex < apps.count {
             let target = apps[currentAppIndex]
             Logger.log("🎯 Activating application: \(target.appName)")
             // Activate the whole app — brings it to front and switches to the
@@ -1717,6 +1745,7 @@ class WindowManager: ObservableObject {
 
         dismissSwitcherWindow(rideTransition: rideTransition)
 
+        apps.removeAll()
         DispatchQueue.global(qos: .utility).async {
             AppIconCache.shared.clearCache()
         }
@@ -1747,7 +1776,8 @@ class WindowManager: ObservableObject {
         // _SLPSSetFrontProcessWithOptions scoped to the window switches Spaces as a
         // side-effect (there is no public Set-current-space API); makeKeyWindow +
         // AXRaise then bring the exact window forward. Un-minimize first if needed.
-        if window.cgWindowID != 0 {
+        // If the SkyLight SPI didn't resolve (future macOS), fall through to AX.
+        if window.cgWindowID != 0 && slpsAvailable {
             let axElement = window.axElement
             if window.isMinimized, let el = axElement {
                 Logger.log("   📤 Restoring minimized window from the Dock")
@@ -1769,8 +1799,11 @@ class WindowManager: ObservableObject {
             return
         }
 
-        // Legacy AX path (CT2 firstWindow, or DS2 windows with no real id).
-        if let axElement = getCachedAXElement(
+        // Legacy AX path (CT2 firstWindow, or DS2 windows with no real id). Prefer
+        // the element resolved at enumeration time; only fall back to the
+        // index-based cache lookup when we don't have one (avoids raising the
+        // wrong window via a hardcoded index 0).
+        if let axElement = window.axElement ?? getCachedAXElement(
             windowID: window.windowID,
             processID: window.processID,
             windowIndex: window.axWindowIndex
@@ -2030,31 +2063,38 @@ class WindowManager: ObservableObject {
     private func startNumberKeyGlobalIntercept() {
         stopNumberKeyGlobalIntercept()
         
-        let eventCallback: CGEventTapCallBack = { (proxy, type, event, refcon) in
+        let eventCallback: CGEventTapCallBack = { (_, type, event, refcon) in
             let windowManager = Unmanaged<WindowManager>.fromOpaque(refcon!).takeUnretainedValue()
-            
-            guard type == .keyDown else {
-                return Unmanaged.passRetained(event)
+
+            // macOS disables a tap after a slow callback or user input; re-enable
+            // it so the number-key intercept doesn't die silently.
+            if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                if let tap = windowManager.numberKeyEventTap {
+                    CGEvent.tapEnable(tap: tap, enable: true)
+                }
+                return Unmanaged.passUnretained(event)
             }
-            
+
+            // Only swallow digits while a switcher is actually visible — otherwise
+            // they would be eaten in every app.
+            guard type == .keyDown,
+                  windowManager.isShowingSwitcher || windowManager.isShowingAppSwitcher else {
+                return Unmanaged.passUnretained(event)
+            }
+
             let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-            
             if let numberKey = windowManager.keyCodeToNumberKey(UInt16(keyCode)) {
-                
                 DispatchQueue.main.async {
                     if windowManager.isShowingSwitcher {
-                        Logger.log("🔢 [Global] DS2 number key \(numberKey) intercepted")
                         windowManager.selectWindowByNumberKey(numberKey)
                     } else if windowManager.isShowingAppSwitcher {
-                        Logger.log("🔢 [Global] CT2 number key \(numberKey) intercepted")
                         windowManager.selectAppByNumberKey(numberKey)
                     }
                 }
-                
                 return nil
             }
-            
-            return Unmanaged.passRetained(event)
+
+            return Unmanaged.passUnretained(event)
         }
         
         let eventMask = CGEventMask(1 << CGEventType.keyDown.rawValue)

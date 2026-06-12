@@ -275,7 +275,18 @@ class HotkeyManager {
     
     private func handleEventTap(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         let settings = settingsManager.settings
-        
+
+        // macOS disables a tap after a slow callback or heavy user input. If we
+        // don't re-enable it, Command+Tab interception dies permanently and the
+        // system switcher silently takes over until the app restarts.
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            if let tap = eventTap {
+                CGEvent.tapEnable(tap: tap, enable: true)
+                Logger.log("♻️ CT2 EventTap re-enabled after \(type == .tapDisabledByTimeout ? "timeout" : "user input")")
+            }
+            return Unmanaged.passUnretained(event)
+        }
+
         // Check if it's an event we are interested in
         if type == .keyDown && settings.ct2Enabled {
             let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
