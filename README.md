@@ -48,6 +48,18 @@ Or open `Lineup/Lineup.xcodeproj` in Xcode and run the **Lineup** scheme.
 
 For signed/notarized release builds and the CI pipeline, see [SIGNING.md](SIGNING.md).
 
+### Dev build alongside the release
+
+The **Debug** configuration builds as a distinct app — bundle id
+`com.cleyrop.lineup.dev`, display name **"Lineup Dev"** — so it has its own
+TCC permissions and LaunchServices entry, completely separate from the installed
+release (`com.cleyrop.lineup` / "Lineup"). Grant Accessibility to "Lineup Dev"
+once and it persists across rebuilds without ever disturbing the release's grant.
+
+```sh
+./scripts/dev-install.sh        # build Debug, install ~/Applications/Lineup Dev.app, relaunch
+```
+
 ## Permissions
 
 Lineup needs **Accessibility** permission (System Settings → Privacy & Security →
