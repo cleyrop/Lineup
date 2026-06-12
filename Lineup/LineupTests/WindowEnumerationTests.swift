@@ -42,7 +42,9 @@ final class WindowEnumerationTests: XCTestCase {
             exp.fulfill()
         }
         wait(for: [exp], timeout: 10)
-        let app = try XCTUnwrap(launched)
+        guard let app = launched else {
+            throw XCTSkip("Could not launch TextEdit in this environment")
+        }
         textEdit = app
 
         // Ask TextEdit (via AppleScript) for a fresh document so a window exists.

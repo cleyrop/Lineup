@@ -80,7 +80,7 @@ final class SettingsTests: XCTestCase {
         // so the user's config is never wiped when a field is added).
         XCTAssertEqual(decoded.modifierKey, .function)
         XCTAssertEqual(decoded.triggerKey, .space)
-        XCTAssertEqual(decoded.windowDisplayStyle, .appIcon)
+        XCTAssertEqual(decoded.windowDisplayStyle, .initials)
         XCTAssertTrue(decoded.showWindowsFromAllSpaces)
         XCTAssertEqual(decoded.colorScheme, .system)
     }

@@ -478,8 +478,8 @@ struct AppSettings: Codable {
         switcherFollowActiveWindow: true,
         // Include windows from all Spaces by default
         showWindowsFromAllSpaces: true,
-        // Window visual: the app icon by default (no permission)
-        windowDisplayStyle: .appIcon,
+        // Window visual: a colored monogram by default (distinct per window, no permission)
+        windowDisplayStyle: .initials,
         // Switcher position default settings
         switcherVerticalPosition: 0.39,
         // Switcher header style default settings
