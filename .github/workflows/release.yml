@@ -86,15 +86,16 @@ jobs:
             $prerelease
 
       # Keep the Homebrew tap (cleyrop/homebrew-lineup) in sync: bump the cask's
-      # version + DMG sha256 on every stable release. Requires HOMEBREW_TAP_TOKEN
-      # (a token with contents:write on cleyrop/homebrew-lineup); skipped if unset.
+      # version + DMG sha256 on every stable release. Authenticates with a
+      # write-enabled deploy key (HOMEBREW_TAP_DEPLOY_KEY) scoped to just the tap
+      # repo; the step is skipped if the secret is unset.
       - name: Bump Homebrew cask
         env:
-          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
           TAP_REPO: cleyrop/homebrew-lineup
         run: |
-          if [ -z "${TAP_TOKEN:-}" ]; then
-            echo "HOMEBREW_TAP_TOKEN not set — skipping cask bump."
+          if [ -z "${TAP_DEPLOY_KEY:-}" ]; then
+            echo "HOMEBREW_TAP_DEPLOY_KEY not set — skipping cask bump."
             exit 0
           fi
           case "$GITHUB_REF_NAME" in
@@ -102,8 +103,13 @@ jobs:
           esac
           version="${MARKETING_VERSION}"
           sha="$(shasum -a 256 "dist/Lineup-${version}.dmg" | awk '{print $1}')"
+          # Use the deploy key only for this clone/push.
+          key="$(mktemp)"
+          printf '%s\n' "$TAP_DEPLOY_KEY" > "$key"
+          chmod 600 "$key"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
           tmp="$(mktemp -d)"
-          git clone --depth 1 "https://x-access-token:${TAP_TOKEN}@github.com/${TAP_REPO}.git" "$tmp/tap"
+          git clone --depth 1 "git@github.com:${TAP_REPO}.git" "$tmp/tap"
           cask="$tmp/tap/Casks/lineup.rb"
           /usr/bin/sed -i '' -E "s/^( *version )\".*\"/\1\"${version}\"/" "$cask"
           /usr/bin/sed -i '' -E "s/^( *sha256 )\".*\"/\1\"${sha}\"/" "$cask"
@@ -115,3 +121,4 @@ jobs:
           else
             echo "Cask already at ${version} — nothing to push."
           fi
+          rm -f "$key"

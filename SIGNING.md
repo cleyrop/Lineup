@@ -102,14 +102,20 @@ brew install --cask cleyrop/lineup/lineup
 ```
 
 `release.yml`'s final step bumps that tap's `Casks/lineup.rb` (version + DMG
-`sha256`) automatically on every stable tag. It needs **`HOMEBREW_TAP_TOKEN`** —
-a token with `contents: write` on `cleyrop/homebrew-lineup` — as a repo secret;
-without it the step is skipped (the release still publishes, the cask just won't
-auto-bump). Create a fine-grained PAT scoped to that one repo and add it:
+`sha256`) automatically on every stable tag. It authenticates with a
+**write-enabled deploy key** scoped to the tap repo — the public half is a
+read-write deploy key on `cleyrop/homebrew-lineup`, the private half is the
+`HOMEBREW_TAP_DEPLOY_KEY` secret on `cleyrop/Lineup` (both already provisioned).
+If the secret is absent the step is skipped (the release still publishes, the
+cask just won't auto-bump). Prerelease tags (`v1.2.3-rc1`) are skipped so the
+cask only tracks stable releases.
+
+A deploy key is used rather than a personal access token because it is scoped to
+exactly one repo and can be provisioned entirely from the CLI. To rotate it:
 
 ```sh
-gh secret set HOMEBREW_TAP_TOKEN --repo cleyrop/Lineup < token.txt
+ssh-keygen -t ed25519 -f tapkey -N "" -C "lineup-release-autobump"
+gh repo deploy-key add tapkey.pub --repo cleyrop/homebrew-lineup --allow-write --title "lineup-release-autobump (CI write)"
+gh secret set HOMEBREW_TAP_DEPLOY_KEY --repo cleyrop/Lineup < tapkey
+rm -P tapkey tapkey.pub
 ```
-
-Prerelease tags (`v1.2.3-rc1`) are skipped so the cask only tracks stable
-releases.
