@@ -20,6 +20,18 @@
 "general_settings_section_title" = "General Settings";
 "launch_at_startup" = "Launch at Startup";
 "launch_at_startup_description" = "Automatically start Lineup when you log in";
+"launch_at_startup_error" = "Couldn't update login item: %@. You may need to allow Lineup in System Settings › General › Login Items.";
+
+// MARK: - Permissions
+"permissions_section_title" = "Permissions";
+"permission_accessibility" = "Accessibility";
+"permission_accessibility_description" = "Required to switch windows and capture the activation hotkey.";
+"permission_screen_recording" = "Screen Recording";
+"permission_screen_recording_description" = "Only needed for live window previews. Skip it if you use app icons or initials.";
+"permission_granted" = "Granted";
+"permission_not_granted" = "Not granted";
+"permission_grant_button" = "Grant…";
+"permission_open_settings_button" = "Open Settings…";
 
 // MARK: - DS2 Window Switcher Interface
 "window_switcher_title" = "Select Window";

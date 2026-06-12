@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import AppKit
+import ApplicationServices
+import CoreGraphics
 
 // MARK: - Preferences Sections
 
@@ -152,6 +155,98 @@ struct GeneralSettingsSection: View {
                 .toggleStyle(.switch)
                 .labelsHidden()
             }
+            if let error = settingsManager.launchAtStartupError {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.orange)
+                    Text(LocalizedStrings.launchAtStartupError(error))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+}
+
+// MARK: - Permissions Section
+struct PermissionsSettingsSection: View {
+    @State private var accessibilityGranted = AXIsProcessTrusted()
+    @State private var screenRecordingGranted = CGPreflightScreenCaptureAccess()
+
+    // The user grants these in System Settings, outside the app, so poll while
+    // the pane is visible to reflect the change without a relaunch.
+    private let refresh = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        SettingsSection(title: LocalizedStrings.permissionsSectionTitle) {
+            PermissionRow(
+                title: LocalizedStrings.permissionAccessibility,
+                subtitle: LocalizedStrings.permissionAccessibilityDescription,
+                granted: accessibilityGranted,
+                action: requestAccessibility
+            )
+            PermissionRow(
+                title: LocalizedStrings.permissionScreenRecording,
+                subtitle: LocalizedStrings.permissionScreenRecordingDescription,
+                granted: screenRecordingGranted,
+                action: requestScreenRecording
+            )
+        }
+        .onReceive(refresh) { _ in
+            accessibilityGranted = AXIsProcessTrusted()
+            screenRecordingGranted = CGPreflightScreenCaptureAccess()
+        }
+    }
+
+    private func requestAccessibility() {
+        let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+        let prompted = AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
+        accessibilityGranted = prompted
+        if !prompted {
+            openSettings("Privacy_Accessibility")
+        }
+    }
+
+    private func requestScreenRecording() {
+        // Triggers the system prompt the first time; afterward it's a no-op and
+        // the user must toggle it in System Settings, so deep-link there too.
+        let granted = CGRequestScreenCaptureAccess()
+        screenRecordingGranted = granted
+        if !granted {
+            openSettings("Privacy_ScreenCapture")
+        }
+    }
+
+    private func openSettings(_ anchor: String) {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(anchor)") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+}
+
+private struct PermissionRow: View {
+    let title: String
+    let subtitle: String
+    let granted: Bool
+    let action: () -> Void
+
+    var body: some View {
+        SettingsRow(title: title, subtitle: subtitle) {
+            HStack(spacing: 10) {
+                HStack(spacing: 5) {
+                    Image(systemName: granted ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .foregroundColor(granted ? .green : .orange)
+                    Text(granted ? LocalizedStrings.permissionGranted : LocalizedStrings.permissionNotGranted)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                if !granted {
+                    Button(LocalizedStrings.permissionGrantButton, action: action)
+                        .controlSize(.small)
+                }
+            }
         }
     }
 }
@@ -229,7 +324,7 @@ struct HotkeyEditor: View {
                 Text("+").foregroundStyle(.secondary)
 
                 Picker("", selection: $trigger) {
-                    ForEach(TriggerKey.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                    ForEach(TriggerKey.allCases, id: \.self) { Text($0.layoutAwareLabel).tag($0) }
                 }
                 .labelsHidden()
                 .frame(width: 130)
@@ -247,7 +342,7 @@ struct HotkeyEditor: View {
                 Image(systemName: "keyboard")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(LocalizedStrings.currentHotkeyDisplay(modifier.displayName, trigger.displayName))
+                Text(LocalizedStrings.currentHotkeyDisplay(modifier.displayName, trigger.layoutAwareLabel))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -295,6 +390,7 @@ struct GeneralPaneView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             GeneralSettingsSection(settingsManager: settingsManager)
+            PermissionsSettingsSection()
             LanguageSettingsSection(languageManager: languageManager)
         }
     }

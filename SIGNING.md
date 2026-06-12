@@ -20,11 +20,16 @@ Export the six Apple credentials into your shell (see the table below), then:
 
 ```sh
 ./scripts/build-macos.sh
-./scripts/sign-and-notarize-macos.sh
-./scripts/package-dmg-macos.sh      # -> dist/Lineup-<version>.dmg
+./scripts/sign-and-notarize-macos.sh   # signs + notarizes + staples the .app
+./scripts/package-dmg-macos.sh         # -> dist/Lineup-<version>.dmg, also signed + notarized + stapled
 ```
 
 The signing identity is **`Developer ID Application: Cleyrop (4SKW2Z97A2)`**.
+
+Both scripts share the keychain/notary plumbing in
+`scripts/lib/apple-codesign.sh`, so the app **and** the DMG are each Developer ID
+signed, notarized and stapled. With no credentials present (and `STRICT=0`) both
+steps skip signing and emit an unsigned artifact with a warning.
 
 ## CI
 

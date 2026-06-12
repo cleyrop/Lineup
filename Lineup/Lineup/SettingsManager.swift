@@ -111,7 +111,15 @@ enum TriggerKey: String, CaseIterable, Codable {
             return LocalizedStrings.triggerRightBracket
         }
     }
-    
+
+    /// Label that reflects the user's actual keyboard layout. The cases are ANSI
+    /// physical positions, so on AZERTY/QWERTZ the produced character differs;
+    /// show that instead of the US-centric `displayName` so the hint matches the
+    /// key the user presses. Falls back to `displayName` for dead keys.
+    var layoutAwareLabel: String {
+        KeyboardLayout.character(for: keyCode) ?? displayName
+    }
+
     var keyCode: UInt32 {
         switch self {
         case .grave:
@@ -543,7 +551,10 @@ extension AppSettings {
 // MARK: - Settings Manager
 class SettingsManager: ObservableObject {
     @Published var settings: AppSettings
-    
+    /// Last error from a launch-at-login register/unregister, surfaced in
+    /// Preferences. `nil` when the last attempt succeeded.
+    @Published var launchAtStartupError: String?
+
     private let userDefaults = UserDefaults.standard
     private let settingsKey = "LineupSettings"
     
@@ -679,73 +690,28 @@ class SettingsManager: ObservableObject {
         saveSettings()
     }
     
+    /// Register/unregister the app as a login item via ServiceManagement
+    /// (macOS 13+). Failures are surfaced through `launchAtStartupError` and the
+    /// stored flag is re-synced to the real service state, so the toggle never
+    /// claims a state the system didn't accept (e.g. the user disallowed the
+    /// login item in System Settings › General › Login Items).
     private func setLaunchAtStartup(_ enabled: Bool) {
-        let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.unknown.Lineup"
-        
-        if enabled {
-            // Add to login items
-            let appURL = Bundle.main.bundleURL
-            if #available(macOS 13.0, *) {
-                // Use modern API for macOS 13+
-                try? SMAppService.mainApp.register()
+        do {
+            if enabled {
+                if SMAppService.mainApp.status != .enabled {
+                    try SMAppService.mainApp.register()
+                }
             } else {
-                // Use legacy API for older macOS versions
-                addToLoginItemsLegacy(appURL: appURL)
+                try SMAppService.mainApp.unregister()
             }
-        } else {
-            // Remove from login items
-            if #available(macOS 13.0, *) {
-                // Use modern API for macOS 13+
-                try? SMAppService.mainApp.unregister()
-            } else {
-                // Use legacy API for older macOS versions
-                removeFromLoginItemsLegacy(bundleIdentifier: bundleIdentifier)
-            }
+            launchAtStartupError = nil
+            Logger.log("✅ Launch at login \(enabled ? "enabled" : "disabled")")
+        } catch {
+            launchAtStartupError = error.localizedDescription
+            Logger.log("❌ Launch-at-login \(enabled ? "register" : "unregister") failed: \(error.localizedDescription)")
         }
-    }
-    
-    // Legacy method for macOS 12 and earlier
-    private func addToLoginItemsLegacy(appURL: URL) {
-        // Use AppleScript as a more reliable method for legacy support
-        let script = """
-        tell application "System Events"
-            if not (exists login item "\(appURL.lastPathComponent)") then
-                make login item at end with properties {name:"\(appURL.lastPathComponent)", path:"\(appURL.path)", hidden:false}
-            end if
-        end tell
-        """
-        
-        if let appleScript = NSAppleScript(source: script) {
-            var error: NSDictionary?
-            appleScript.executeAndReturnError(&error)
-            if let error = error {
-                Logger.log("❌ Failed to add login item via AppleScript: \(error)")
-            } else {
-                Logger.log("✅ Successfully added login item via AppleScript")
-            }
-        }
-    }
-    
-    private func removeFromLoginItemsLegacy(bundleIdentifier: String) {
-        let appURL = Bundle.main.bundleURL
-        
-        let script = """
-        tell application "System Events"
-            if (exists login item "\(appURL.lastPathComponent)") then
-                delete login item "\(appURL.lastPathComponent)"
-            end if
-        end tell
-        """
-        
-        if let appleScript = NSAppleScript(source: script) {
-            var error: NSDictionary?
-            appleScript.executeAndReturnError(&error)
-            if let error = error {
-                Logger.log("❌ Failed to remove login item via AppleScript: \(error)")
-            } else {
-                Logger.log("✅ Successfully removed login item via AppleScript")
-            }
-        }
+        // Reflect what the system actually did, not what was requested.
+        settings.launchAtStartup = (SMAppService.mainApp.status == .enabled)
     }
     
     // MARK: - App Title Configuration

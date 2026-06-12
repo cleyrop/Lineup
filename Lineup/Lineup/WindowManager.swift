@@ -523,21 +523,7 @@ class WindowManager: ObservableObject {
     }
     
     private func getDisplayName(for screen: NSScreen?) -> String {
-        guard let screen = screen else { return "Unknown" }
-        
-        if #available(macOS 10.15, *) {
-            return screen.localizedName
-        } else {
-            if let screenNumber = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber {
-                let displayID = CGDirectDisplayID(screenNumber.uint32Value)
-                if CGDisplayIsBuiltin(displayID) != 0 {
-                    return "Built-in Display"
-                } else {
-                    return "External Display (\(displayID))"
-                }
-            }
-            return "Unknown Display"
-        }
+        screen?.localizedName ?? "Unknown"
     }
     
     func showWindowSwitcher() {

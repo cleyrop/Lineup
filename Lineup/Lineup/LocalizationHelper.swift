@@ -99,7 +99,21 @@ struct LocalizedStrings {
     static let generalSettingsSectionTitle = "general_settings_section_title".localized
     static let launchAtStartup = "launch_at_startup".localized
     static let launchAtStartupDescription = "launch_at_startup_description".localized
-    
+    static func launchAtStartupError(_ reason: String) -> String {
+        return "launch_at_startup_error".localized(with: reason)
+    }
+
+    // MARK: - Permissions
+    static let permissionsSectionTitle = "permissions_section_title".localized
+    static let permissionAccessibility = "permission_accessibility".localized
+    static let permissionAccessibilityDescription = "permission_accessibility_description".localized
+    static let permissionScreenRecording = "permission_screen_recording".localized
+    static let permissionScreenRecordingDescription = "permission_screen_recording_description".localized
+    static let permissionGranted = "permission_granted".localized
+    static let permissionNotGranted = "permission_not_granted".localized
+    static let permissionGrantButton = "permission_grant_button".localized
+    static let permissionOpenSettingsButton = "permission_open_settings_button".localized
+
     // MARK: - DS2 Window Switcher Interface
     static let windowSwitcherTitle = "window_switcher_title".localized
     static func hotkeyHintTemplate(_ modifier: String, _ trigger: String) -> String {
