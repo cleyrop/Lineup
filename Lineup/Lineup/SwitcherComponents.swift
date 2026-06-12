@@ -178,12 +178,6 @@ struct BaseSwitcherView<ItemType>: View {
         .background(.regularMaterial)
     }
     
-    private var simplifiedHeaderView: some View {
-        Rectangle()
-            .fill(.ultraThinMaterial)
-            .frame(height: 8)
-    }
-    
     // MARK: - Item List View
     private var itemListView: some View {
         ScrollViewReader { proxy in
@@ -240,57 +234,6 @@ struct BaseSwitcherView<ItemType>: View {
             return "rectangle.2.swap"
         case .ct2:
             return "rectangle.3.group"
-        }
-    }
-    
-    private func logDisplayInfo() {
-        let currentScreen = getCurrentFocusedScreen()
-        let primaryScreen = getPrimaryScreen()
-        
-        let currentDisplayName = getDisplayName(for: currentScreen)
-        let primaryDisplayName = getDisplayName(for: primaryScreen)
-        
-        Logger.log("🖥️ Switcher rendered - Current display: \(currentDisplayName), Primary display: \(primaryDisplayName)")
-    }
-    
-    private func getCurrentFocusedScreen() -> NSScreen? {
-        let mouseLocation = NSEvent.mouseLocation
-        for screen in NSScreen.screens {
-            if screen.frame.contains(mouseLocation) {
-                return screen
-            }
-        }
-        return NSScreen.main
-    }
-    
-    private func getPrimaryScreen() -> NSScreen? {
-        for screen in NSScreen.screens {
-            if let screenNumber = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber {
-                let displayID = CGDirectDisplayID(screenNumber.uint32Value)
-                if CGDisplayIsMain(displayID) != 0 {
-                    return screen
-                }
-            }
-        }
-        return NSScreen.main
-    }
-    
-    private func getDisplayName(for screen: NSScreen?) -> String {
-        guard let screen = screen else { return "Unknown" }
-        
-        if #available(macOS 10.15, *) {
-            return screen.localizedName
-        } else {
-            if let screenNumber = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber {
-                let displayID = CGDirectDisplayID(screenNumber.uint32Value)
-                
-                if CGDisplayIsBuiltin(displayID) != 0 {
-                    return "Built-in Display"
-                } else {
-                    return "External Display (\(displayID))"
-                }
-            }
-            return "Unknown Display"
         }
     }
     

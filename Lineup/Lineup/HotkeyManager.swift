@@ -287,11 +287,12 @@ class HotkeyManager {
             return Unmanaged.passUnretained(event)
         }
 
-        // Check if it's an event we are interested in
-        if type == .keyDown && settings.ct2Enabled {
+        // Check if it's an event we are interested in. Don't intercept CT2 while
+        // the DS2 (same-app) switcher is open — otherwise both could show at once.
+        if type == .keyDown && settings.ct2Enabled && !windowManager.isShowingSwitcher {
             let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
             let flags = event.flags
-            
+
             // Check if it matches the CT2 hotkey
             if keyCode == Int64(settings.ct2TriggerKey.keyCode) &&
                flags.contains(settings.ct2ModifierKey.cgEventFlags) {
