@@ -1,204 +1,46 @@
-# DevSwitcher2
+# Lineup
 
-<div align="center">
+**A focused, list-only macOS window switcher.**
 
-![DevSwitcher2 Logo](https://img.shields.io/badge/DevSwitcher2-2.7-blue?style=for-the-badge)
-[![macOS](https://img.shields.io/badge/macOS-12.0+-000000?style=for-the-badge&logo=apple&logoColor=white)](https://www.apple.com/macos/)
-![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/vaspike/devswitcher2/total?style=for-the-badge&color=orange)
-[![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](LICENSE)
+Lineup is a Cleyrop-maintained fork of
+[DevSwitcher2](https://github.com/vaspike/DevSwitcher2), trimmed to a single,
+fast list view and made English-only. It lives in the menu bar and gives you two
+switchers:
 
-**Efficient and Elegant macOS Window Switching Tool**
+- **Same-app window switcher** (default `⌘ + \``) — cycle the windows of the
+  current app, with smart project-name extraction from window titles.
+- **App switcher** (default `⌘ + Tab`) — an enhanced Command-Tab across all apps.
 
-A modern menu bar application that enhances window and application switching experience for smoother workflow.
+## What's different from DevSwitcher2
 
-[Download Latest](https://github.com/vaspike/DevSwitcher2/releases) · [Report Issues](https://github.com/vaspike/DevSwitcher2/issues) · [Feature Requests](https://github.com/vaspike/DevSwitcher2/discussions) · [中文文档](README_CN.md)
-</div>
+- **List-only.** The circular/radial layout, outer-ring styles and floating-item
+  effects are removed — one clean list, less to configure, less to maintain.
+- **English-only.** The Chinese localization and language picker are gone.
+- **Arrow-key navigation** (issue #6) — while the switcher is open, use **↑ / ↓**
+  to move through the list and **Enter** to activate, in addition to holding the
+  modifier and the number keys.
+- **Windows from all Spaces** (issue #7) — the same-app switcher lists the app's
+  windows from every Space / desktop, not just the current one. Toggle it under
+  *Preferences → Advanced → Show Windows From All Spaces* (on by default).
 
-## Preview
+## Build
 
-<img width="505" height="505" alt="image" src="https://github.com/user-attachments/assets/8bef6aca-3c01-4de5-bfd4-c4da589af18a" />
+Requires Xcode (macOS 12+ deployment target).
 
-<img width="513" height="514" alt="image" src="https://github.com/user-attachments/assets/4639e4f0-011f-4bc4-9482-8121a034a804" />
-
----
-
-<img width="1614" height="1064" alt="image" src="https://github.com/user-attachments/assets/8914b824-40d1-4061-b3af-f84f7c07277a" />
-
-
-<img width="1448" height="1002" alt="image" src="https://github.com/user-attachments/assets/ce5d65cc-a42f-4951-b3a8-805b32e8ccf9" />
-
-
-## ✨ Key Features
-
-### Enhanced Application Switchers
-- **Intra-App Window Switcher**: Fast switching between windows within the same app (Enhanced Command + `)
-- **Inter-App Switcher**: Switching between all applications (Enhanced Command + Tab)
-
-### Intelligent Window Recognition
-- Smart title extraction with multiple strategies (first part, last part, custom separator)
-- Automatic project name recognition (e.g., Xcode projects, VSCode workspaces)
-- Configurable app-specific rules
-
-### Ultimate Performance
-- Icon caching system for smooth visual experience
-- Intelligent multi-display support
-- 60Hz real-time response
-- Optimized memory management
-
-### Highly Customizable
-- Fully customizable hotkey settings
-- Flexible window title display strategies
-
-### Internationalization Support
-- Complete Chinese and English localization
-- Dynamic language switching
-- Automatic system language detection
-
-
-## Quick Start
-
-### System Requirements
-- macOS 12.0 or later
-- Accessibility permissions (guided setup on first launch)
-
-### Installation Methods
-
-#### Method 1: Brew install
-
-```bash
-# Install
-brew tap vaspike/devswitcher2 && brew install --cask DevSwitcher2
-```
-```bash
-# Uninstall
-brew uninstall devswitcher2
+```sh
+./scripts/build-macos.sh        # unsigned Lineup.app for local use
 ```
 
-#### Method 2: Download Release
-1. Visit the [Releases page](https://github.com/vaspike/DevSwitcher2/releases)
-2. Download the latest `DevSwitcher2.dmg`
-3. Open the dmg file and drag the app to Applications folder
-4. Launch the app and grant necessary permissions
+Or open `Lineup/Lineup.xcodeproj` in Xcode and run the **Lineup** scheme.
 
-#### Method 1: Build from Source
-```bash
-# Clone repository
-git clone https://github.com/vaspike/DevSwitcher2.git
-cd DevSwitcher2
+For signed/notarized release builds and the CI pipeline, see [SIGNING.md](SIGNING.md).
 
-# Open project in Xcode
-open DevSwitcher2.xcodeproj
+## Permissions
 
-# Or build from command line
-xcodebuild -project DevSwitcher2.xcodeproj -scheme DevSwitcher2 -configuration Release
-```
-
-### Initial Setup
-1. **Grant Accessibility Permissions**: The app will automatically guide you through the setup
-2. **Configure Hotkeys**: Default uses Command + ` (intra-app window switcher) and Command + Tab (inter-app switcher)
-3. **Customize Settings**: Access preferences through the menu bar icon
-4. **Note**: The `inter-app switcher` feature is disabled by default and needs to be manually enabled in preferences
-
-## Usage Guide
-
-### Basic Operations
-- **Window Switching**: `Command + `` (backtick) - Switch between windows of the same app
-- **App Switching**: `Command + Tab` - Switch between all applications
-- **Release Modifier Keys**: Complete switching and activate selected window/app
-- **ESC Key**: Cancel switching and return to original state
-
-### Advanced Tips
-- **Continuous Switching**: Hold modifier keys and repeatedly press trigger key for quick browsing
-- **Reverse Switching**: Add Shift key for reverse traversal
-- **Mouse Selection**: Click directly to select when switcher interface is displayed
-- **Custom Hotkeys**: Configure personalized hotkey combinations in preferences
-
-### Smart Title Strategies
-DevSwitcher2 provides three title extraction strategies:
-
-1. **First Part**: Display the first half of the title (suitable for apps with filenames first)
-2. **Last Part**: Display the last half of the title (suitable for windows with app names last)
-3. **Custom Separator**: Smart extraction based on specified separators (like " - ", " | ", etc.)
-
-## Configuration Details
-
-### Hotkey Settings
-- **Modifier Keys**: Command, Option, Control, Shift and their combinations
-- **Trigger Keys**: Letters, numbers, function keys, special symbol keys
-- **Conflict Detection**: Automatic detection and warning of hotkey conflicts
-
-### App-Specific Configuration
-Configure personalized title extraction rules for different apps:
-- Bundle ID identification
-- Custom separators
-- Specific title format handling
-
-### Language Settings
-- **System Default**: Follow system language settings
-- **English**: English interface
-- **Chinese**: Simplified Chinese interface
-- Changes take effect after restart
-
-## Development Guide
-
-### Technical Architecture
-- **UI Framework**: SwiftUI + AppKit hybrid development
-- **Permission Management**: Accessibility API
-- **Event Handling**: Carbon Event Manager
-- **Icon Caching**: Custom caching system
-- **Internationalization**: NSLocalizedString + dynamic language switching
-
-### Project Structure
-```
-DevSwitcher2/
-├── DevSwitcher2App.swift          # App entry point and AppDelegate
-├── WindowManager.swift            # Core window management logic
-├── HotkeyManager.swift            # Hotkey registration and handling
-├── SwitcherComponents.swift       # Switcher UI components
-├── PreferencesView.swift          # Preferences interface
-├── SettingsManager.swift          # Settings storage and management
-├── LocalizationHelper.swift       # Internationalization support
-├── AppIconCache.swift             # Icon caching system
-├── CompatibilityExtensions.swift  # macOS version compatibility
-└── WindowSwitcherView.swift       # Window switcher view
-```
-
-### Build Requirements
-- Xcode 15.0+
-- Swift 5.9+
-- macOS Deployment Target: 12.0
-
-### Contributing
-1. Fork this repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Create a Pull Request
-
-## Troubleshooting
-
-### Common Issues
-
-**Q: App cannot switch windows?**
-A: Please ensure accessibility permissions are granted: System Preferences → Security & Privacy → Privacy → Accessibility
-
-**Q: Hotkeys not responding?**
-A: Check for conflicts with other app hotkeys, you can change them in preferences
-
-**Q: Some app window titles display incorrectly?**
-A: Try configuring a custom title separator for that app in preferences
-
-**Q: Switcher interface displays abnormally?**
-A: Restart the app or reset settings to default values
-
-### Performance Optimization
-- Icon cache is automatically managed by the app
-- Adjust title extraction strategies to fit your workflow
-- Disable unnecessary switching modes to save resources
+Lineup needs **Accessibility** permission (System Settings → Privacy & Security →
+Accessibility) to read and switch application windows.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-App for Mac
+MIT — see [LICENSE](LICENSE). Originally created by River (DevSwitcher2);
+fork maintained by Cleyrop.

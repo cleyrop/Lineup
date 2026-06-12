@@ -1,0 +1,67 @@
+# Lineup — build, Developer ID sign, notarize and package the macOS app.
+#
+# Runs on Cleyrop's self-hosted macOS runner (tag `macos`, shell executor,
+# full Xcode) — the same runner that signs the Cleyrop CLI. The signing step
+# reuses the SAME six APPLE_* CI variables already provisioned for cleyrop-sdk;
+# provision them on this project (or at the cleyrop-org group level so every
+# project inherits them) to enable signing. See SIGNING.md.
+#
+# Pipeline:
+#   - MR / branch push  -> build:macos (unsigned, smoke-launch) for verification
+#   - tag `v*`          -> release:macos (build + sign + notarize + staple + DMG),
+#                          STRICT=1 so a missing cert fails the release instead
+#                          of silently shipping an unsigned app.
+
+stages:
+  - build
+  - release
+
+# Shared setup for the shell-executor macOS runner: it launches jobs with a
+# minimal PATH and does not source the login shell, so put codesign/xcrun's
+# dir and Homebrew on PATH explicitly. The Xcode toolchain lives in /usr/bin.
+.macos_base: &macos_base
+  tags:
+    - macos
+  # notarytool --wait blocks up to 90m; keep the job budget above it so
+  # notarytool's own timeout fires first and the keychain cleanup trap runs,
+  # rather than GitLab SIGKILLing mid-sign. Serialise with the SDK's signing
+  # job — they share one Mac runner and each mutate the user keychain list.
+  timeout: 2h
+  resource_group: macos-signing
+  before_script:
+    - export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$HOME/.local/bin:$PATH"
+    - 'echo "xcode: $(xcodebuild -version | head -1)"'
+
+build:macos:
+  <<: *macos_base
+  stage: build
+  script:
+    - ./scripts/build-macos.sh
+    # Smoke: the unsigned app must at least be a well-formed bundle.
+    - test -x "build/Build/Products/Release/Lineup.app/Contents/MacOS/Lineup"
+  artifacts:
+    paths:
+      - build/Build/Products/Release/Lineup.app
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
+
+release:macos:
+  <<: *macos_base
+  stage: release
+  variables:
+    # Customer-facing build: a missing/partial cert set must fail, not skip.
+    STRICT: "1"
+  script:
+    - ./scripts/build-macos.sh
+    - ./scripts/sign-and-notarize-macos.sh
+    - ./scripts/package-dmg-macos.sh
+  artifacts:
+    paths:
+      - dist/Lineup-*.dmg
+    expire_in: never
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/
