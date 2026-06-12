@@ -118,8 +118,9 @@ Temporary Items
 .apdisk 
 .idea
 signed-release
+dist/
 *.dmg
-DevSwitcher2.app
+Lineup.app
 .local
 logo.png
 .vscode
