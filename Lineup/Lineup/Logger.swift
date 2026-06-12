@@ -1,6 +1,6 @@
 //
 //  Logger.swift
-//  DevSwitcher2
+//  Lineup
 //
 //  Created by river on 2025-07-27.
 //

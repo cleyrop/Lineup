@@ -1,6 +1,6 @@
 //
 //  PreferencesView.swift
-//  DevSwitcher2
+//  Lineup
 //
 //  Created by river on 2025-07-26.
 //
@@ -15,10 +15,9 @@ struct PreferencesView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // 顶部标题栏
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("DevSwitcher2")
+                    Text("Lineup")
                         .font(.title2)
                         .fontWeight(.bold)
                     Text(LocalizedStrings.preferencesSubtitle)
@@ -537,7 +536,6 @@ struct AdvancedSettingsView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            // 切换器视图显示设置
             CollapsibleSection(
                 id: "switcher_display_settings",
                 title: LocalizedStrings.switcherDisplaySectionTitle,
@@ -552,7 +550,6 @@ struct AdvancedSettingsView: View {
                 }
             }
             
-            // 窗口标题配置区域
             CollapsibleSection(
                 id: "window_title_config",
                 title: LocalizedStrings.windowTitleSectionTitle,
@@ -568,7 +565,6 @@ struct AdvancedSettingsView: View {
             }
         }
         .onAppear {
-            // 默认展开第一个区域
             expandedSections.insert("switcher_display_settings")
         }
     }
@@ -810,7 +806,6 @@ struct WindowTitleConfigView: View {
     @State private var newAppStrategy: TitleExtractionStrategy = .beforeFirstSeparator
     @State private var newAppCustomSeparator = " - "
     
-    // 导出/导入状态
     @State private var showingImportResult = false
     @State private var importResultMessage = ""
     @State private var importResultTitle = ""
@@ -869,7 +864,6 @@ struct WindowTitleConfigView: View {
         }
     }
     
-    // MARK: - 导出/导入方法
     
     private func exportConfiguration() {
         Task { @MainActor in
@@ -882,7 +876,7 @@ struct WindowTitleConfigView: View {
                 )
             case .failure(let error):
                 if case ConfigurationError.userCancelled = error {
-                    return // 用户取消，不显示错误
+                    return
                 }
                 showImportResult(
                     title: LocalizedStrings.exportFailed,
@@ -919,7 +913,7 @@ struct WindowTitleConfigView: View {
                 }
             case .failure(let error):
                 if case ConfigurationError.userCancelled = error {
-                    return // 用户取消，不显示错误
+                    return
                 }
                 showImportResult(
                     title: LocalizedStrings.importFailed,
@@ -937,7 +931,6 @@ struct WindowTitleConfigView: View {
         showingImportResult = true
     }
     
-    // 为不同策略提供默认分隔符
     private func getDefaultSeparator(for strategy: TitleExtractionStrategy) -> String {
         switch strategy {
         case .firstPart, .lastPart:
@@ -988,7 +981,6 @@ struct PreviewSectionView: View {
                     .foregroundColor(.secondary)
                     .italic()
             } else {
-                // 窗口标题选择器
                 VStack(alignment: .leading, spacing: 8) {
                     Picker(LocalizedStrings.selectWindowTitle, selection: $selectedWindowTitle) {
                         ForEach(windowTitles, id: \.self) { title in
@@ -998,7 +990,6 @@ struct PreviewSectionView: View {
                     .pickerStyle(MenuPickerStyle())
                     .frame(maxWidth: .infinity, alignment: .leading)
                     
-                    // 可复制的标题展示
                     if !selectedWindowTitle.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(LocalizedStrings.selectedTitle + ":")
@@ -1017,14 +1008,11 @@ struct PreviewSectionView: View {
                             .frame(height: 44)
                         }
                         
-                        // 实时提取结果预览
                         VStack(alignment: .leading, spacing: 12) {
-                            // 提取结果标题和调试信息分开显示
                             Text(LocalizedStrings.extractionResult)
                                 .font(.subheadline)
                                 .fontWeight(.medium)
                             
-                            // 显示当前使用的策略和分隔符
                             HStack(spacing: 20) {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("\(LocalizedStrings.currentStrategy): \(strategy.displayName)")
@@ -1044,7 +1032,6 @@ struct PreviewSectionView: View {
                             .padding(8)
                             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
                             
-                            // 提取结果显示
                             HStack {
                                 Text(getExtractionResult())
                                     .font(.system(.title3, design: .monospaced))
@@ -1067,14 +1054,11 @@ struct PreviewSectionView: View {
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
         .onChange(of: strategy) { _ in
-            // 策略改变时触发重新计算
         }
         .onChange(of: customSeparator) { _ in
-            // 分隔符改变时触发重新计算
         }
     }
     
-    // 获取实时提取结果
     private func getExtractionResult() -> String {
         guard !selectedWindowTitle.isEmpty else { return "" }
         
@@ -1087,7 +1071,6 @@ struct PreviewSectionView: View {
         )
     }
     
-    // 为不同策略提供默认分隔符
     private func getDefaultSeparator(for strategy: TitleExtractionStrategy) -> String {
         switch strategy {
         case .firstPart, .lastPart:
@@ -1108,7 +1091,6 @@ struct AppConfigRowView: View {
     
     var body: some View {
         HStack(spacing: 16) {
-            // 应用信息
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text(config.appName)
@@ -1118,7 +1100,6 @@ struct AppConfigRowView: View {
                     
                     Spacer()
                     
-                    // 策略标签
                     Text(config.strategy.displayName)
                         .font(.caption)
                         .fontWeight(.medium)
@@ -1145,7 +1126,6 @@ struct AppConfigRowView: View {
                 }
             }
             
-            // 删除按钮
             Button {
                 onDelete()
             } label: {
@@ -1173,7 +1153,6 @@ struct AddAppConfigView: View {
     let onSave: () -> Void
     @Environment(\.dismiss) private var dismiss
     
-    // 预览功能状态
     @State private var windowTitles: [String] = []
     @State private var selectedWindowTitle: String = ""
     @State private var isLoadingPreview = false
@@ -1182,12 +1161,10 @@ struct AddAppConfigView: View {
     @StateObject private var windowManager = WindowManager()
     @StateObject private var settingsManager = SettingsManager.shared
     
-    // 应用选择状态
     @State private var selectedApp: InstalledAppInfo? = nil
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // 标题区域
             HStack {
                 Text(LocalizedStrings.addAppConfig)
                     .font(.title2)
@@ -1206,7 +1183,6 @@ struct AddAppConfigView: View {
             
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    // 应用选择区域
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
                             Text(LocalizedStrings.appSelectionSection)
@@ -1227,7 +1203,6 @@ struct AddAppConfigView: View {
                             .stroke(Color.blue.opacity(0.1), lineWidth: 1)
                     )
                     
-                    // 基本信息区域
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
                             Text(LocalizedStrings.basicInfoSection)
@@ -1274,7 +1249,6 @@ struct AddAppConfigView: View {
                             .stroke(Color.green.opacity(0.1), lineWidth: 1)
                     )
                     
-                    // 提取策略区域
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
                             Text(LocalizedStrings.extractionStrategySection)
@@ -1296,14 +1270,12 @@ struct AddAppConfigView: View {
                                 }
                                 .pickerStyle(MenuPickerStyle())
                                 .onChange(of: strategy) { newStrategy in
-                                    // 当策略改变时，自动设置默认分隔符
                                     if customSeparator.isEmpty || customSeparator == " - " {
                                         customSeparator = getDefaultSeparator(for: newStrategy)
                                     }
                                 }
                             }
                             
-                            // 为所有策略都显示分隔符设置（除了 fullTitle）
                             if strategy != .fullTitle {
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(LocalizedStrings.customSeparator)
@@ -1325,7 +1297,6 @@ struct AddAppConfigView: View {
                             .stroke(Color.orange.opacity(0.1), lineWidth: 1)
                     )
                     
-                    // 预览区域
                     if showingPreview {
                         VStack(alignment: .leading, spacing: 16) {
                             HStack {
@@ -1356,7 +1327,6 @@ struct AddAppConfigView: View {
                 .padding(.vertical, 20)
             }
             
-            // 底部操作按钮
             HStack {
                 Button(LocalizedStrings.cancel) {
                     dismiss()
@@ -1390,7 +1360,6 @@ struct AddAppConfigView: View {
         )
     }
     
-    // 预览功能方法
     private func loadPreview() {
         guard !bundleId.isEmpty else { return }
         
@@ -1417,7 +1386,6 @@ struct AddAppConfigView: View {
         }
     }
     
-    // 为不同策略提供默认分隔符占位符
     private func getDefaultSeparatorPlaceholder(for strategy: TitleExtractionStrategy) -> String {
         switch strategy {
         case .firstPart, .lastPart:
@@ -1432,7 +1400,6 @@ struct AddAppConfigView: View {
         }
     }
     
-    // 为不同策略提供帮助文本
     private func getSeparatorHelpText(for strategy: TitleExtractionStrategy) -> String {
         switch strategy {
         case .firstPart:
@@ -1449,7 +1416,6 @@ struct AddAppConfigView: View {
         }
     }
     
-    // 为不同策略提供默认分隔符
     private func getDefaultSeparator(for strategy: TitleExtractionStrategy) -> String {
         switch strategy {
         case .firstPart, .lastPart:
@@ -1473,7 +1439,7 @@ struct AboutView: View {
                     .frame(width: 48, height: 48)
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("DevSwitcher2")
+                    Text("Lineup")
                         .font(.title)
                         .fontWeight(.bold)
                     
@@ -1485,13 +1451,10 @@ struct AboutView: View {
                 Spacer()
             }
             
-            // 分隔线
             Divider()
                 .padding(.vertical, 8)
             
-            // 链接按钮区域 - 重新设计为更美观的卡片式布局
             HStack(spacing: 16) {
-                // 官网按钮 - 主要按钮，稍大一些
                 Button(action: {
                     if let url = URL(string: "https://rivermao.com/dev/devswitcher2") {
                         NSWorkspace.shared.open(url)
@@ -1533,13 +1496,11 @@ struct AboutView: View {
                 .scaleEffect(1.0)
                 .onHover { isHovered in
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        // 可以添加悬停效果
                     }
                 }
                 
-                // GitHub按钮
                 Button(action: {
-                    if let url = URL(string: "https://github.com/vaspike/DevSwitcher2") {
+                    if let url = URL(string: "https://github.com/cleyrop/Lineup") {
                         NSWorkspace.shared.open(url)
                     }
                 }) {
@@ -1577,7 +1538,6 @@ struct AboutView: View {
                 .buttonStyle(.plain)
                 .help(LocalizedStrings.gitHub)
                 
-                // Buy Me a Coffee按钮
                 Button(action: {
                     if let url = URL(string: "https://rivermao.com/about/") {
                         NSWorkspace.shared.open(url)
@@ -1688,7 +1648,6 @@ struct AppMainIconView: View {
                 .resizable()
                 .aspectRatio(contentMode: .fit)
         } else {
-            // 备用图标
             Image(systemName: "rectangle.3.group")
                 .font(.largeTitle)
                 .foregroundColor(.accentColor)
@@ -1696,12 +1655,10 @@ struct AppMainIconView: View {
     }
     
     private func loadAppIcon() -> NSImage? {
-        // 方法1: 尝试使用应用程序的图标
         if let appIcon = NSApp.applicationIconImage {
             return appIcon
         }
         
-        // 方法2: 尝试从bundle中加载.icns文件
         if let iconPath = Bundle.main.path(forResource: "AppIcon", ofType: "icns"),
            let nsImage = NSImage(contentsOfFile: iconPath) {
             return nsImage
@@ -1767,11 +1724,38 @@ struct SwitcherDisplaySettingsView: View {
                     ))
                     .toggleStyle(SwitchToggleStyle())
                 }
-                
+
                 // Divider between settings
                 Divider()
                     .padding(.horizontal, -20)
-                
+
+                // Show Windows From All Spaces Setting
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(LocalizedStrings.showWindowsFromAllSpacesLabel)
+                            .font(.headline)
+                            .fontWeight(.medium)
+
+                        Text(LocalizedStrings.showWindowsFromAllSpacesDescription)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    Toggle("", isOn: Binding(
+                        get: { settingsManager.settings.showWindowsFromAllSpaces },
+                        set: { newValue in
+                            settingsManager.updateShowWindowsFromAllSpaces(newValue)
+                        }
+                    ))
+                    .toggleStyle(SwitchToggleStyle())
+                }
+
+                // Divider between settings
+                Divider()
+                    .padding(.horizontal, -20)
+
                 // Vertical Position Setting
                 VStack(alignment: .leading, spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
@@ -1824,152 +1808,7 @@ struct SwitcherDisplaySettingsView: View {
                 Divider()
                     .padding(.horizontal, -20)
                 
-                // Layout Style Setting
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(LocalizedStrings.switcherLayoutStyleLabel)
-                            .font(.headline)
-                            .fontWeight(.medium)
-                        
-                        Text(LocalizedStrings.switcherLayoutStyleDescription)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    Picker("", selection: Binding(
-                        get: { settingsManager.settings.switcherLayoutStyle },
-                        set: { newValue in
-                            settingsManager.updateSwitcherLayoutStyle(newValue)
-                        }
-                    )) {
-                        ForEach(SwitcherLayoutStyle.allCases, id: \.self) { style in
-                            Text(style.displayName).tag(style)
-                        }
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .frame(width: 200)
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-                
-                // Circular Layout Size Setting (only show when circular layout is selected)
-                if settingsManager.settings.switcherLayoutStyle == .circular {
-                    Divider()
-                        .padding(.horizontal, -20)
-                    
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(LocalizedStrings.circularLayoutSizeLabel)
-                                .font(.headline)
-                                .fontWeight(.medium)
-                            
-                            Text(LocalizedStrings.circularLayoutSizeDescription)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        VStack(spacing: 4) {
-                            Slider(
-                                value: Binding(
-                                    get: { settingsManager.settings.circularLayoutSize },
-                                    set: { newValue in
-                                        settingsManager.updateCircularLayoutSize(newValue)
-                                    }
-                                ),
-                                in: 1.0...2.0,
-                                step: 0.1
-                            )
-                            .frame(width: 150)
-                            
-                            HStack {
-                                Text(LocalizedStrings.circularLayoutSizeSmall)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Spacer()
-                                Text(LocalizedStrings.circularLayoutSizeLarge)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            .frame(width: 150)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-                    
-                                                        // Circular Layout Outer Ring Style Setting
-                    Divider()
-                        .padding(.horizontal, -20)
-                    
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(LocalizedStrings.circularLayoutOuterRingStyleLabel)
-                                .font(.headline)
-                                .fontWeight(.medium)
-                            
-                            Text(LocalizedStrings.circularLayoutOuterRingStyleDescription)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        Picker("", selection: Binding(
-                            get: { settingsManager.settings.circularLayoutOuterRingStyle },
-                            set: { newValue in
-                                settingsManager.updateCircularLayoutOuterRingStyle(newValue)
-                            }
-                        )) {
-                            ForEach(CircularOuterRingStyle.allCases, id: \.self) { style in
-                                Text(style.displayName).tag(style)
-                            }
-                        }
-                        .pickerStyle(SegmentedPickerStyle())
-                        .frame(width: 200)
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-
-                // Selected Item Display Style Setting
-                Divider()
-                    .padding(.horizontal, -20)
-
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(LocalizedStrings.selectedItemDisplayStyleLabel)
-                            .font(.headline)
-                            .fontWeight(.medium)
-
-                        Text(LocalizedStrings.selectedItemDisplayStyleDescription)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-
-                    Spacer()
-
-                    Picker("", selection: Binding(
-                        get: { settingsManager.settings.selectedItemDisplayStyle },
-                        set: { newValue in
-                            settingsManager.updateSelectedItemDisplayStyle(newValue)
-                        }
-                    )) {
-                        ForEach(SelectedItemDisplayStyle.allCases, id: \.self) { style in
-                            Text(style.displayName).tag(style)
-                        }
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .frame(width: 200)
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-
                 // Color Scheme Setting
-                Divider()
-                    .padding(.horizontal, -20)
-                
                 VStack(alignment: .leading, spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(LocalizedStrings.colorSchemeLabel)
@@ -1988,7 +1827,6 @@ struct SwitcherDisplaySettingsView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
-                }
             }
             .padding(20)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))

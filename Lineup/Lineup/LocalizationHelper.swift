@@ -1,6 +1,6 @@
 //
 //  LocalizationHelper.swift
-//  DevSwitcher2
+//  Lineup
 //
 //  Created by river on 2025-07-26.
 //
@@ -14,7 +14,7 @@ class LanguageManager: ObservableObject {
     
     static let shared = LanguageManager()
     private let userDefaults = UserDefaults.standard
-    private let languageKey = "DevSwitcher2Language"
+    private let languageKey = "LineupLanguage"
     
     private init() {
         if let languageString = userDefaults.string(forKey: languageKey),
@@ -44,27 +44,22 @@ class LanguageManager: ObservableObject {
 enum AppLanguage: String, CaseIterable {
     case system = "system"
     case english = "en"
-    case chinese = "zh-Hans"
-    
+
     var displayName: String {
         switch self {
         case .system:
             return "language_system".localized
         case .english:
             return "language_english".localized
-        case .chinese:
-            return "language_chinese".localized
         }
     }
-    
+
     var languageCode: String {
         switch self {
         case .system:
             return Locale.preferredLanguages.first?.prefix(2).description ?? "en"
         case .english:
             return "en"
-        case .chinese:
-            return "zh-Hans"
         }
     }
 }
@@ -94,7 +89,6 @@ struct LocalizedStrings {
     static let language = "language".localized
     static let languageSystem = "language_system".localized
     static let languageEnglish = "language_english".localized
-    static let languageChinese = "language_chinese".localized
     static let languageRestartHint = "language_restart_hint".localized
     static let languageSectionTitle = "language_section_title".localized
     static let languageSelectionLabel = "language_selection_label".localized
@@ -296,7 +290,6 @@ struct LocalizedStrings {
     static let operationCancelled = "operation_cancelled".localized
     static let importNoDataMessage = "import_no_data_message".localized
     
-    // 带参数的消息
     static func exportSuccessMessage(_ fileName: String) -> String {
         return "export_success_message".localized(with: fileName)
     }
@@ -342,7 +335,9 @@ struct LocalizedStrings {
     static let switcherBehaviorSectionTitle = "switcher_behavior_section_title".localized
     static let followActiveWindowLabel = "follow_active_window_label".localized
     static let followActiveWindowDescription = "follow_active_window_description".localized
-    
+    static let showWindowsFromAllSpacesLabel = "show_windows_from_all_spaces_label".localized
+    static let showWindowsFromAllSpacesDescription = "show_windows_from_all_spaces_description".localized
+
     // MARK: - Switcher Position Settings
     static let switcherVerticalPositionLabel = "switcher_vertical_position_label".localized
     static let switcherVerticalPositionDescription = "switcher_vertical_position_description".localized
@@ -353,32 +348,6 @@ struct LocalizedStrings {
     static let switcherHeaderStyleDescription = "switcher_header_style_description".localized
     static let headerStyleDefault = "header_style_default".localized
     static let headerStyleSimplified = "header_style_simplified".localized
-    
-    // MARK: - Switcher Layout Style Settings
-    static let switcherLayoutStyleLabel = "switcher_layout_style_label".localized
-    static let switcherLayoutStyleDescription = "switcher_layout_style_description".localized
-    static let layoutStyleList = "layout_style_list".localized
-    static let layoutStyleCircular = "layout_style_circular".localized
-    
-    // MARK: - Circular Layout Size Settings
-    static let circularLayoutSizeLabel = "circular_layout_size_label".localized
-    static let circularLayoutSizeDescription = "circular_layout_size_description".localized
-    static let circularLayoutSizeSmall = "circular_layout_size_small".localized
-    static let circularLayoutSizeLarge = "circular_layout_size_large".localized
-    
-    // MARK: - Circular Layout Outer Ring Transparency Settings
-    static let circularLayoutOuterRingTransparencyLabel = "circular_layout_outer_ring_transparency_label".localized
-    static let circularLayoutOuterRingTransparencyDescription = "circular_layout_outer_ring_transparency_description".localized
-    static let circularLayoutOuterRingStyleLabel = "circular_layout_outer_ring_style_label".localized
-    static let circularLayoutOuterRingStyleDescription = "circular_layout_outer_ring_style_description".localized
-    static let circularLayoutOuterRingStyleTransparent = "circular_layout_outer_ring_style_transparent".localized
-    static let circularLayoutOuterRingStyleFrosted = "circular_layout_outer_ring_style_frosted".localized
-
-    // MARK: - Selected Item Display Style Settings
-    static let selectedItemDisplayStyleLabel = "selected_item_display_style_label".localized
-    static let selectedItemDisplayStyleDescription = "selected_item_display_style_description".localized
-    static let selectedItemDisplayStyleFloating = "selected_item_display_style_floating".localized
-    static let selectedItemDisplayStyleNoFloating = "selected_item_display_style_no_floating".localized
 
     // MARK: - Color Scheme Settings
     static let colorSchemeSectionTitle = "color_scheme_section_title".localized

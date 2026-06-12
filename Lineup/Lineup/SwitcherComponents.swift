@@ -1,6 +1,6 @@
 //
 //  SwitcherComponents.swift
-//  DevSwitcher2
+//  Lineup
 //
 //  Created for componentizing switcher views
 //
@@ -96,7 +96,7 @@ struct CustomUnevenRoundedRectangle: Shape {
 
 // MARK: - Switcher Type Enum
 enum SwitcherType {
-    case ds2  // DevSwitcher2 (same app window switching)
+    case ds2  // Lineup (same app window switching)
     case ct2  // Command+Tab enhanced (all app switching)
 }
 
@@ -131,21 +131,13 @@ struct BaseSwitcherView<ItemType>: View {
     @StateObject private var settingsManager = SettingsManager.shared
     
     var body: some View {
-        Group {
-            switch settingsManager.settings.switcherLayoutStyle {
-            case .list:
-                listLayoutView
-            case .circular:
-                circularLayoutView
-            }
-        }
-        .environmentObject(settingsManager)
+        listLayoutView
+            .environmentObject(settingsManager)
     }
-    
+
     // MARK: - List Layout View
     private var listLayoutView: some View {
         VStack(spacing: 0) {
-            // 只有在非简化模式下才显示header
             headerView
             itemListView
         }
@@ -154,18 +146,7 @@ struct BaseSwitcherView<ItemType>: View {
         .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
         .frame(maxWidth: 600, maxHeight: 400)
     }
-    
-    // MARK: - Circular Layout View
-    private var circularLayoutView: some View {
-        // For circular layout, always use simplified header style (no header)
-        CircularLayoutView(
-            items: items,
-            currentIndex: currentIndex,
-            onItemSelect: onItemSelect,
-            itemContentBuilder: { _, _, _, _ in AnyView(EmptyView()) } // Not used in new implementation
-        )
-    }
-    
+
     // MARK: - Header View
     private var headerView: some View {
         Group {
@@ -221,7 +202,6 @@ struct BaseSwitcherView<ItemType>: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                         .background(backgroundColorForIndex(index))
-                        // 在简化模式下，为第一个item添加上方圆角
                         .clipShape(itemClipShape(for: index))
                         .id(index) // Add ID for scroll positioning
                         .onHover { isHovering in
@@ -231,7 +211,6 @@ struct BaseSwitcherView<ItemType>: View {
                 }
             }
             .background(.ultraThinMaterial)
-            // 在简化模式下，移除ScrollView自身的圆角，让第一个item处理圆角
             .clipShape(scrollViewClipShape())
             .onChange(of: currentIndex) { newIndex in
                 // Auto scroll to item when selection changes
@@ -285,7 +264,6 @@ struct BaseSwitcherView<ItemType>: View {
     }
     
     private func getPrimaryScreen() -> NSScreen? {
-        // 使用 CGDisplayIsMain 找到主显示器
         for screen in NSScreen.screens {
             if let screenNumber = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber {
                 let displayID = CGDirectDisplayID(screenNumber.uint32Value)
@@ -294,26 +272,21 @@ struct BaseSwitcherView<ItemType>: View {
                 }
             }
         }
-        // 如果找不到，返回 NSScreen.main 作为备用
         return NSScreen.main
     }
     
     private func getDisplayName(for screen: NSScreen?) -> String {
         guard let screen = screen else { return "Unknown" }
         
-        // macOS 10.15+ 使用 localizedName
         if #available(macOS 10.15, *) {
             return screen.localizedName
         } else {
-            // 对于旧版本 macOS，使用设备描述信息
             if let screenNumber = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber {
                 let displayID = CGDirectDisplayID(screenNumber.uint32Value)
                 
-                // 检查是否为内置显示器
                 if CGDisplayIsBuiltin(displayID) != 0 {
                     return "Built-in Display"
                 } else {
-                    // 外部显示器，尝试获取更多信息
                     return "External Display (\(displayID))"
                 }
             }
@@ -340,10 +313,8 @@ struct BaseSwitcherView<ItemType>: View {
         
         if isSimplified {
             if isFirstItem && isLastItem {
-                // 如果只有一个item，使用完整圆角
                 return AnyShape(RoundedRectangle(cornerRadius: 12))
             } else if isFirstItem {
-                // 第一个item：只有上方圆角
                 return AnyShape(CustomUnevenRoundedRectangle(
                     topLeadingRadius: 12,
                     bottomLeadingRadius: 0,
@@ -351,7 +322,6 @@ struct BaseSwitcherView<ItemType>: View {
                     topTrailingRadius: 12
                 ))
             } else if isLastItem {
-                // 最后一个item：只有下方圆角
                 return AnyShape(CustomUnevenRoundedRectangle(
                     topLeadingRadius: 0,
                     bottomLeadingRadius: 12,
@@ -359,11 +329,9 @@ struct BaseSwitcherView<ItemType>: View {
                     topTrailingRadius: 0
                 ))
             } else {
-                // 中间的item：不需要圆角
                 return AnyShape(Rectangle())
             }
         } else {
-            // 非简化模式：不添加额外的圆角
             return AnyShape(Rectangle())
         }
     }
@@ -372,10 +340,8 @@ struct BaseSwitcherView<ItemType>: View {
         let isSimplified = settingsManager.settings.switcherHeaderStyle == .simplified
         
         if isSimplified {
-            // 简化模式：使用完整圆角
             return AnyShape(RoundedRectangle(cornerRadius: 12))
         } else {
-            // 非简化模式：不添加额外的圆角（由外层容器处理）
             return AnyShape(Rectangle())
         }
     }
@@ -444,7 +410,6 @@ struct WindowItemContentView: View {
                                     .shadow(color: .black.opacity(0.1), radius: 1, x: 0, y: 1)
                             )
                     } else if showNumberKeys {
-                        // 保持空间占位以维持布局一致性
                         Color.clear
                             .frame(width: 22, height: 18)
                     }
@@ -542,7 +507,6 @@ struct AppItemContentView: View {
                                     .shadow(color: .black.opacity(0.1), radius: 1, x: 0, y: 1)
                             )
                     } else if showNumberKeys {
-                        // 保持空间占位以维持布局一致性
                         Color.clear
                             .frame(width: 22, height: 18)
                     }
@@ -621,253 +585,3 @@ struct CT2SwitcherView: View {
         )
     }
 }
-
-// MARK: - Arc Sector Shape for Ring Segments
-struct ArcSector: Shape {
-    let startAngle: Angle
-    let endAngle: Angle
-    let innerRadius: CGFloat
-    let outerRadius: CGFloat
-    
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        
-        path.addArc(center: center, radius: outerRadius, startAngle: startAngle, endAngle: endAngle, clockwise: false)
-        path.addArc(center: center, radius: innerRadius, startAngle: endAngle, endAngle: startAngle, clockwise: true)
-        path.closeSubpath()
-        
-        return path
-    }
-}
-
-// MARK: - Circular Layout View (Hybrid: Focused Center, Original Ring)
-struct CircularLayoutView<ItemType>: View {
-    let items: [ItemType]
-    let currentIndex: Int
-    let onItemSelect: (Int) -> Void
-    let itemContentBuilder: (ItemType, Bool, Bool, Int) -> AnyView
-
-    @StateObject private var settingsManager = SettingsManager.shared
-
-    // Ring layout parameters
-    private var layoutSizeMultiplier: CGFloat { CGFloat(settingsManager.settings.circularLayoutSize) }
-    private var outerRadius: CGFloat { 100 + (75 * layoutSizeMultiplier) }
-    private var innerRadius: CGFloat { 80 + (20 * layoutSizeMultiplier) }
-    private var ringSize: CGFloat { (outerRadius + 40) * 2 }
-    private var iconSize: CGFloat { 20 + (8 * layoutSizeMultiplier) }
-    private var centerIconSize: CGFloat { 40 + (16 * layoutSizeMultiplier) }
-    
-    var body: some View {
-        ZStack {
-            let colorScheme = settingsManager.settings.colorScheme
-            
-            // Background blur effect for outer ring area with color scheme
-            Circle()
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    Circle()
-                        .fill(colorScheme.backgroundGradient)
-                        .opacity(0.2)
-                )
-                .frame(width: outerRadius * 2, height: outerRadius * 2)
-                .opacity(settingsManager.settings.circularLayoutOuterRingStyle.opacity)
-            
-            // Outer ring with sectors (Original implementation)
-            ringSectors
-            
-            // The refined, focused center area
-            centerArea
-        }
-        .frame(width: ringSize, height: ringSize)
-    }
-
-    // MARK: - Ring Sectors (Original implementation)
-    @ViewBuilder
-    private var ringSectors: some View {
-        ForEach(Array(items.enumerated()), id: \.offset) { index, item in
-            let angleRange = sectorAngleRange(for: index)
-            
-            Button(action: {
-                onItemSelect(index)
-            }) {
-                ZStack {
-                    // Sector background with blur effect
-                    ArcSector(
-                        startAngle: angleRange.start,
-                        endAngle: angleRange.end,
-                        innerRadius: innerRadius,
-                        outerRadius: outerRadius
-                    )
-                    .fill(.ultraThinMaterial)
-                    .opacity(sectorBackgroundOpacity())
-                    
-                    // Sector color overlay for selection and hover
-                    ArcSector(
-                        startAngle: angleRange.start,
-                        endAngle: angleRange.end,
-                        innerRadius: innerRadius,
-                        outerRadius: outerRadius
-                    )
-                    .foregroundColor(sectorBackgroundColor(for: index))
-                    
-                    // Sector content
-                    sectorContent(for: item, at: index)
-                }
-            }
-            .buttonStyle(PlainButtonStyle())
-            .scaleEffect(selectedItemScaleEffect(for: index))
-            .animation(.easeInOut(duration: 0.15), value: currentIndex)
-        }
-    }
-    
-    // MARK: - Center Area (The Focused Lens)
-    @ViewBuilder
-    private var centerArea: some View {
-        if currentIndex < items.count {
-            let colorScheme = settingsManager.settings.colorScheme
-            ZStack {
-                // 1. Base material with color scheme gradient
-                Circle().fill(.ultraThinMaterial)
-                    .overlay(
-                        Circle()
-                            .fill(colorScheme.backgroundGradient)
-                            .opacity(0.3)
-                    )
-
-                // 2. Inner glow with color scheme
-                Circle()
-                    .stroke(colorScheme.glowColor, lineWidth: 2)
-                    .blur(radius: 8)
-                    .opacity(0.6)
-                
-                // 3. Inner Shadow for depth
-                Circle().stroke(Color.black.opacity(0.2), lineWidth: 4).blur(radius: 5).clipShape(Circle()).padding(1)
-                
-                // 4. Edge Highlight for crystal effect with color scheme
-                Circle().stroke(
-                    AngularGradient(
-                        gradient: Gradient(colors: [
-                            colorScheme.accentColor.opacity(0.6),
-                            colorScheme.accentColor.opacity(0.0),
-                            colorScheme.accentColor.opacity(0.6)
-                        ]),
-                        center: .center
-                    ),
-                    lineWidth: 2
-                ).blur(radius: 1)
-
-                // 5. The content with its ripple animation
-                centerContent
-                    .id(currentIndex)
-                    .transition(.asymmetric(insertion: .scale(scale: 0.9).combined(with: .opacity), removal: .scale(scale: 1.1).combined(with: .opacity)))
-                    .animation(.spring(response: 0.4, dampingFraction: 0.7), value: currentIndex)
-            }
-            .frame(width: innerRadius * 1.8, height: innerRadius * 1.8)
-            .shadow(color: colorScheme.primaryColor.opacity(0.3), radius: 12, x: 0, y: 8)
-        }
-    }
-    
-    @ViewBuilder
-    private var centerContent: some View {
-        if let window = items[currentIndex] as? WindowInfo {
-            VStack(spacing: 4) {
-                AppIconView(processID: window.processID).frame(width: centerIconSize, height: centerIconSize)
-                Text(window.projectName).font(.headline).foregroundColor(.primary).lineLimit(1)
-                Text(window.appName).font(.subheadline).foregroundColor(.secondary).lineLimit(1)
-            }
-        } else if let app = items[currentIndex] as? AppInfo {
-            VStack(spacing: 4) {
-                AppIconView(processID: app.processID).frame(width: centerIconSize, height: centerIconSize)
-                Text(app.appName).font(.headline).foregroundColor(.primary).lineLimit(1)
-                if app.windowCount > 1 {
-                    Text(LocalizedStrings.multipleWindows(app.windowCount)).font(.caption).foregroundColor(.secondary).lineLimit(1)
-                } else {
-                    Text(LocalizedStrings.singleWindow).font(.caption).foregroundColor(.secondary).lineLimit(1)
-                }
-            }
-        }
-    }
-    
-    // MARK: - Helper Methods
-    private func sectorAngleRange(for index: Int) -> (start: Angle, end: Angle) {
-        let totalItems = max(items.count, 1)
-        let anglePerItem = 360.0 / Double(totalItems)
-        let startAngle = -90.0 + (Double(index) * anglePerItem)
-        let endAngle = startAngle + anglePerItem
-        return (start: Angle(degrees: startAngle), end: Angle(degrees: endAngle))
-    }
-
-    private func selectedItemScaleEffect(for index: Int) -> CGFloat {
-        let displayStyle = settingsManager.settings.selectedItemDisplayStyle
-        switch displayStyle {
-        case .floating:
-            return index == currentIndex ? 1.02 : 1.0
-        case .noFloating:
-            return 1.0
-        }
-    }
-
-    private func sectorBackgroundOpacity() -> Double {
-        let ringStyle = settingsManager.settings.circularLayoutOuterRingStyle
-        switch ringStyle {
-        case .frosted:
-            return 1.0
-        case .transparent:
-            return 0.1
-        }
-    }
-
-    private func sectorBackgroundColor(for index: Int) -> Color {
-        let colorScheme = settingsManager.settings.colorScheme
-        let ringStyle = settingsManager.settings.circularLayoutOuterRingStyle
-        
-        if index == currentIndex {
-            return colorScheme.primaryColor.opacity(0.3)
-        } else {
-            // 根据不同样式设置背景色
-            switch ringStyle {
-            case .frosted:
-                // 毛玻璃模式：使用0号item的背景色作为统一标准
-                return sectorBackgroundColorForIndex0()
-            case .transparent:
-                // 透明模式：使用更淡的背景色
-                return colorScheme.secondaryColor.opacity(0.05)
-            }
-        }
-    }
-    
-    // 获取0号item的背景色，作为毛玻璃模式下的统一标准
-    private func sectorBackgroundColorForIndex0() -> Color {
-        let colorScheme = settingsManager.settings.colorScheme
-        // 0号item使用配色方案的次要颜色，透明度适中
-        return colorScheme.secondaryColor.opacity(0.12)
-    }
-    
-    @ViewBuilder
-    private func sectorContent(for item: ItemType, at index: Int) -> some View {
-        let angleRange = sectorAngleRange(for: index)
-        let midAngle = (angleRange.start.degrees + angleRange.end.degrees) / 2
-        let radius = (innerRadius + outerRadius) / 2
-        let radians = midAngle * .pi / 180
-        let x = cos(radians) * radius
-        let y = sin(radians) * radius
-        
-        Group {
-            if let window = item as? WindowInfo {
-                VStack(spacing: 2) {
-                    AppIconView(processID: window.processID).frame(width: iconSize, height: iconSize)
-                    Text(window.projectName).font(.caption2).foregroundColor(.primary).lineLimit(1).frame(maxWidth: outerRadius - innerRadius - 10)
-                }
-            } else if let app = item as? AppInfo {
-                VStack(spacing: 2) {
-                    AppIconView(processID: app.processID).frame(width: iconSize, height: iconSize)
-                    Text(app.appName).font(.caption2).foregroundColor(.primary).lineLimit(1).frame(maxWidth: outerRadius - innerRadius - 10)
-                }
-            }
-        }
-        .offset(x: x, y: y)
-    }
-}
-
-

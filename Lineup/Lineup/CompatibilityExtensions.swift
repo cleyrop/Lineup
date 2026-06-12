@@ -1,6 +1,6 @@
 //
 //  CompatibilityExtensions.swift
-//  DevSwitcher2
+//  Lineup
 //
 //  Created for macOS version compatibility
 //
@@ -10,7 +10,6 @@ import AppKit
 
 // MARK: - NSApplication Compatibility Extension
 extension NSApplication {
-    /// 兼容性activate方法，支持macOS 12.0+
     func activateCompat() {
         if #available(macOS 14.0, *) {
             self.activate()

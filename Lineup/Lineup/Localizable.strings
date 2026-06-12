@@ -1,6 +1,6 @@
 /* 
   Localizable.strings
-  DevSwitcher2
+  Lineup
 
   Created by river on 2025-07-26.
   
@@ -10,7 +10,6 @@
 "language" = "Language";
 "language_system" = "Follow System";
 "language_english" = "English";
-"language_chinese" = "简体中文";
 "language_restart_hint" = "Changes take effect after restarting the application";
 "language_section_title" = "Language Settings";
 "language_selection_label" = "Interface Language";
@@ -20,7 +19,7 @@
 // MARK: - General Settings
 "general_settings_section_title" = "General Settings";
 "launch_at_startup" = "Launch at Startup";
-"launch_at_startup_description" = "Automatically start DevSwitcher2 when you log in";
+"launch_at_startup_description" = "Automatically start Lineup when you log in";
 
 // MARK: - DS2 Window Switcher Interface
 "window_switcher_title" = "Select Window";
@@ -39,20 +38,20 @@
 "multiple_windows" = "%d windows";
 
 // MARK: - Status Bar
-"status_item_tooltip" = "DevSwitcher2 - Enhanced Window Switching";
+"status_item_tooltip" = "Lineup - Enhanced Window Switching";
 
 // MARK: - Permission Prompts
-"accessibility_permission_required" = "DevSwitcher2 needs Accessibility permissions to function properly.";
+"accessibility_permission_required" = "Lineup needs Accessibility permissions to function properly.";
 "open_system_preferences" = "Open System Preferences";
 "accessibility_permission_title" = "Accessibility Permission Required";
-"accessibility_permission_message" = "DevSwitcher2 needs Accessibility permissions to get and switch application windows. Please enable DevSwitcher2 in System Preferences > Security & Privacy > Accessibility.";
+"accessibility_permission_message" = "Lineup needs Accessibility permissions to get and switch application windows. Please enable Lineup in System Preferences > Security & Privacy > Accessibility.";
 "open_system_preferences_button" = "Open System Preferences";
 "setup_later" = "Set Up Later";
 "accessibility_permission_granted" = "Accessibility permission granted";
 
 // MARK: - Restart Required
 "restart_required_title" = "Restart Required";
-"restart_required_message" = "Accessibility permission has been granted! Please restart DevSwitcher2 for the changes to take effect.";
+"restart_required_message" = "Accessibility permission has been granted! Please restart Lineup for the changes to take effect.";
 "restart_now" = "Restart Now";
 "restart_later" = "Restart Later";
 
@@ -66,7 +65,7 @@
 
 // MARK: - Menu Bar
 "preferences" = "Preferences";
-"quit_app" = "Quit DevSwitcher2";
+"quit_app" = "Quit Lineup";
 
 // MARK: - Preferences
 "preferences_title" = "Preferences";
@@ -206,6 +205,8 @@
 "switcher_behavior_section_title" = "Switcher Behavior Settings";
 "follow_active_window_label" = "Follow Active Window";
 "follow_active_window_description" = "Display switcher on the same screen as the active window, otherwise always on primary display";
+"show_windows_from_all_spaces_label" = "Show Windows From All Spaces";
+"show_windows_from_all_spaces_description" = "List the app's windows from every Space / desktop, not just the current one";
 
 // MARK: - Advanced Settings - Switcher Position Settings
 "switcher_vertical_position_label" = "Vertical Position";
@@ -217,32 +218,6 @@
 "switcher_header_style_description" = "Choose the display style for the switcher header";
 "header_style_default" = "Default";
 "header_style_simplified" = "Simplified";
-
-// MARK: - Switcher Layout Style Settings
-"switcher_layout_style_label" = "Layout Style";
-"switcher_layout_style_description" = "Choose how windows and apps are arranged in the switcher interface";
-"layout_style_list" = "List View";
-"layout_style_circular" = "Circular View";
-
-// MARK: - Circular Layout Size Settings
-"circular_layout_size_label" = "Circular Layout Size";
-"circular_layout_size_description" = "Adjust the size of the circular layout. Larger sizes provide more space for text display in the outer ring";
-"circular_layout_size_small" = "Small";
-"circular_layout_size_large" = "Large";
-
-// MARK: - Circular Layout Outer Ring Transparency Settings
-"circular_layout_outer_ring_transparency_label" = "Outer Ring Transparency";
-"circular_layout_outer_ring_transparency_description" = "Adjust the transparency of the outer ring area. Lower transparency provides stronger blur effect";
-"circular_layout_outer_ring_style_label" = "Outer Ring Style";
-"circular_layout_outer_ring_style_description" = "Choose the visual style for the outer ring area";
-"circular_layout_outer_ring_style_transparent" = "Transparent";
-"circular_layout_outer_ring_style_frosted" = "Frosted Glass";
-
-// MARK: - Selected Item Display Style Settings
-"selected_item_display_style_label" = "Selected Item Display Style";
-"selected_item_display_style_description" = "Choose the visual effect for the currently selected item";
-"selected_item_display_style_floating" = "Floating";
-"selected_item_display_style_no_floating" = "No Floating";
 
 // MARK: - Add App Config Dialog Section Titles
 "app_selection_section" = "App Selection";
@@ -282,9 +257,9 @@
 "no_app_configs_message" = "No app-specific configurations";
 
 // MARK: - About Page
-"about_app" = "About DevSwitcher2";
-"version" = "Version 2.7.1";
-"app_description" = "DevSwitcher2 is a modern macOS productivity tool that enhances your window and application switching experience with dual-mode switching capabilities.";
+"about_app" = "About Lineup";
+"version" = "Version 1.0.0";
+"app_description" = "Lineup is a modern macOS productivity tool that enhances your window and application switching experience with dual-mode switching capabilities.";
 "main_features" = "Main Features:";
 "feature_1" = "• DS2 Mode: Enhanced same-app window switching";
 "feature_2" = "• CT2 Mode: Improved Command+Tab for all apps";
@@ -293,15 +268,15 @@
 "feature_5" = "• Multi-display support with intelligent focus transfer";
 "feature_6" = "• Icon caching system for smooth performance";
 "development_info" = "Development Information";
-"author" = "Author: River";
+"author" = "Maintained by Cleyrop";
 "github" = "GitHub Repository";
 "open_github" = "GitHub";
 "website" = "Official Website";
 "open_website" = "Visit Website";
 "buy_me_coffee" = "Buy Me a Coffee";
 "support_development" = "Support Development";
-"coffee_description" = "If you find DevSwitcher2 helpful, consider buying me a coffee to support continued development!";
-"copyright" = "© 2025 River. All rights reserved.";
+"coffee_description" = "If you find Lineup helpful, consider buying me a coffee to support continued development!";
+"copyright" = "© 2025 Cleyrop. All rights reserved.";
 
 // MARK: - Color Scheme Settings
 "color_scheme_section_title" = "Color Scheme";

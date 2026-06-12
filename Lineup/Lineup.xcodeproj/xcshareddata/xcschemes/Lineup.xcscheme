@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "574FC6C92E350802004915FC"
-               BuildableName = "DevSwitcher2.app"
-               BlueprintName = "DevSwitcher2"
-               ReferencedContainer = "container:DevSwitcher2.xcodeproj">
+               BuildableName = "Lineup.app"
+               BlueprintName = "Lineup"
+               ReferencedContainer = "container:Lineup.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -45,9 +45,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "574FC6C92E350802004915FC"
-            BuildableName = "DevSwitcher2.app"
-            BlueprintName = "DevSwitcher2"
-            ReferencedContainer = "container:DevSwitcher2.xcodeproj">
+            BuildableName = "Lineup.app"
+            BlueprintName = "Lineup"
+            ReferencedContainer = "container:Lineup.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -62,9 +62,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "574FC6C92E350802004915FC"
-            BuildableName = "DevSwitcher2.app"
-            BlueprintName = "DevSwitcher2"
-            ReferencedContainer = "container:DevSwitcher2.xcodeproj">
+            BuildableName = "Lineup.app"
+            BlueprintName = "Lineup"
+            ReferencedContainer = "container:Lineup.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

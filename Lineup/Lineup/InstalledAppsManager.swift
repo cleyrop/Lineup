@@ -1,6 +1,6 @@
 //
 //  InstalledAppsManager.swift
-//  DevSwitcher2
+//  Lineup
 //
 //  Created by river on 2025-07-30.
 //
@@ -22,7 +22,6 @@ struct InstalledAppInfo {
     }
 }
 
-// 不再使用单例模式，每次配置窗口打开时创建新实例
 class InstalledAppsManager: ObservableObject {
     @Published var installedApps: [InstalledAppInfo] = []
     @Published var isLoading = false
@@ -30,28 +29,23 @@ class InstalledAppsManager: ObservableObject {
     private var loadTask: Task<Void, Never>?
     
     init() {
-        // 移除自动加载，改为按需加载
     }
     
     deinit {
-        // 取消正在进行的任务
         loadTask?.cancel()
         Logger.log("🗑️ InstalledAppsManager deallocated")
     }
     
     func loadInstalledApps() {
-        // 如果已经在加载或已经有数据，不重复加载
         guard !isLoading && installedApps.isEmpty else { return }
         
         isLoading = true
         Logger.log("📱 Starting to load installed applications...")
         
-        // 使用Task来支持取消操作
         loadTask = Task { @MainActor in
             do {
                 let apps = await loadAppsInBackground()
                 
-                // 检查任务是否被取消
                 guard !Task.isCancelled else {
                     Logger.log("📱 App loading task was cancelled")
                     return
@@ -67,7 +61,6 @@ class InstalledAppsManager: ObservableObject {
         }
     }
     
-    // 清理资源
     func cleanup() {
         loadTask?.cancel()
         installedApps.removeAll()
@@ -78,24 +71,19 @@ class InstalledAppsManager: ObservableObject {
         return await withTaskGroup(of: [InstalledAppInfo].self) { group in
             var allApps: [InstalledAppInfo] = []
             
-            // 并行加载不同来源的应用
             
-            // 1. 加载运行中的应用（最快，优先显示）
             group.addTask {
                 await self.getRunningApps()
             }
             
-            // 2. 加载用户应用目录
             group.addTask {
                 await self.getAppsFromDirectories(["/Applications"])
             }
             
-            // 3. 加载系统应用目录（可能较慢）
             group.addTask {
                 await self.getAppsFromDirectories(["/System/Applications"])
             }
             
-            // 4. 加载用户家目录下的应用
             group.addTask {
                 if let userAppsPath = FileManager.default.urls(for: .applicationDirectory, in: .userDomainMask).first?.path {
                     return await self.getAppsFromDirectories([userAppsPath])
@@ -103,12 +91,10 @@ class InstalledAppsManager: ObservableObject {
                 return []
             }
             
-            // 收集所有结果
             for await apps in group {
                 allApps.append(contentsOf: apps)
             }
             
-            // 去重并排序
             let uniqueApps = self.removeDuplicatesAndSort(allApps)
             return uniqueApps
         }
@@ -121,7 +107,6 @@ class InstalledAppsManager: ObservableObject {
                 
                 let runningApps = NSWorkspace.shared.runningApplications
                 for runningApp in runningApps {
-                    // 检查任务是否被取消
                     guard !Task.isCancelled else {
                         continuation.resume(returning: [])
                         return
@@ -135,7 +120,6 @@ class InstalledAppsManager: ObservableObject {
                     }
                     
                     let appPath = runningApp.bundleURL?.path ?? ""
-                    // 对于运行中的应用，图标通常已经在内存中，获取速度较快
                     let appIcon = runningApp.icon
                     
                     let appInfo = InstalledAppInfo(
@@ -158,7 +142,6 @@ class InstalledAppsManager: ObservableObject {
                 var allApps: [InstalledAppInfo] = []
                 
                 for directory in directories {
-                    // 检查任务是否被取消
                     guard !Task.isCancelled else {
                         continuation.resume(returning: [])
                         return
@@ -167,7 +150,6 @@ class InstalledAppsManager: ObservableObject {
                     let apps = self.getAppsFromDirectory(directory)
                     allApps.append(contentsOf: apps)
                     
-                    // 每处理完一个目录就检查一次取消状态
                     if Task.isCancelled {
                         continuation.resume(returning: [])
                         return
@@ -190,13 +172,11 @@ class InstalledAppsManager: ObservableObject {
             let contents = try FileManager.default.contentsOfDirectory(atPath: directoryPath)
             
             for fileName in contents {
-                // 检查任务是否被取消
                 guard !Task.isCancelled else { break }
                 
                 if fileName.hasSuffix(".app") {
                     let appPath = "\(directoryPath)/\(fileName)"
                     
-                    // 优化：先快速检查基本信息，延迟加载图标
                     if let appInfo = getAppInfoOptimized(from: appPath) {
                         apps.append(appInfo)
                     }
@@ -217,17 +197,14 @@ class InstalledAppsManager: ObservableObject {
             return nil
         }
         
-        // 快速获取应用名称
         let appName = bundle.localizedInfoDictionary?["CFBundleDisplayName"] as? String ??
                      bundle.infoDictionary?["CFBundleDisplayName"] as? String ??
                      bundle.localizedInfoDictionary?["CFBundleName"] as? String ??
                      bundle.infoDictionary?["CFBundleName"] as? String ??
                      bundleURL.deletingPathExtension().lastPathComponent
         
-        // 延迟加载图标 - 只为前50个应用加载图标以提高性能
         var appIcon: NSImage? = nil
         
-        // 可以考虑只为常用应用加载图标，或者使用更轻量的图标获取方式
         if shouldLoadIcon(for: bundleId) {
             appIcon = NSWorkspace.shared.icon(forFile: appPath)
         }
@@ -241,7 +218,6 @@ class InstalledAppsManager: ObservableObject {
     }
     
     private func shouldLoadIcon(for bundleId: String) -> Bool {
-        // 为常用应用优先加载图标
         let commonApps = [
             "com.apple.dt.Xcode",
             "com.microsoft.VSCode",
@@ -264,12 +240,10 @@ class InstalledAppsManager: ObservableObject {
     private func removeDuplicatesAndSort(_ apps: [InstalledAppInfo]) -> [InstalledAppInfo] {
         let uniqueApps = Dictionary(grouping: apps, by: { $0.bundleId })
             .compactMapValues { appGroup in
-                // 优先选择有图标的版本
                 return appGroup.first { $0.icon != nil } ?? appGroup.first
             }
             .values
             .sorted { app1, app2 in
-                // 有图标的应用排在前面
                 if app1.icon != nil && app2.icon == nil {
                     return true
                 } else if app1.icon == nil && app2.icon != nil {
@@ -282,7 +256,6 @@ class InstalledAppsManager: ObservableObject {
         return Array(uniqueApps)
     }
     
-    // 搜索应用的功能
     func searchApps(query: String) -> [InstalledAppInfo] {
         guard !query.isEmpty else { return installedApps }
         
@@ -292,7 +265,6 @@ class InstalledAppsManager: ObservableObject {
         }
     }
     
-    // 懒加载图标 - 当应用即将显示时才加载图标
     func loadIconIfNeeded(for app: InstalledAppInfo) -> InstalledAppInfo {
         guard app.icon == nil else { return app }
         

@@ -1,6 +1,6 @@
 //
 //  AppSelectionView.swift
-//  DevSwitcher2
+//  Lineup
 //
 //  Created by river on 2025-07-30.
 //
@@ -13,7 +13,6 @@ struct AppSelectionView: View {
     @Binding var bundleId: String
     @Binding var appName: String
     
-    // 使用本地实例而非单例，配置窗口关闭时自动释放
     @StateObject private var appsManager = InstalledAppsManager()
     @State private var isDropdownExpanded = false
     @State private var searchText = ""
@@ -34,13 +33,11 @@ struct AppSelectionView: View {
                 .foregroundColor(.secondary)
             
             ZStack {
-                // 主按钮
                 Button(action: {
                     toggleDropdown()
                 }) {
                     HStack {
                         if let selectedApp = selectedApp {
-                            // 显示选中的应用
                             HStack(spacing: 8) {
                                 if let icon = selectedApp.icon {
                                     Image(nsImage: icon)
@@ -66,7 +63,6 @@ struct AppSelectionView: View {
                                 }
                             }
                         } else {
-                            // 默认状态
                             HStack(spacing: 8) {
                                 Image(systemName: "app.fill")
                                     .frame(width: 20, height: 20)
@@ -79,7 +75,6 @@ struct AppSelectionView: View {
                         
                         Spacer()
                         
-                        // 下拉箭头或加载指示器
                         if appsManager.isLoading && isDropdownExpanded {
                             ProgressView()
                                 .scaleEffect(0.6)
@@ -103,14 +98,12 @@ struct AppSelectionView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 
-                // 下拉列表
                 if isDropdownExpanded {
                     VStack(spacing: 0) {
                         Spacer()
-                            .frame(height: 44) // 为主按钮留空间
+                            .frame(height: 44)
                         
                         VStack(spacing: 0) {
-                            // 搜索框
                             HStack {
                                 Image(systemName: "magnifyingglass")
                                     .foregroundColor(.secondary)
@@ -137,7 +130,6 @@ struct AppSelectionView: View {
                             
                             Divider()
                             
-                            // 应用列表
                             ScrollView {
                                 LazyVStack(spacing: 0) {
                                     if appsManager.isLoading {
@@ -177,11 +169,9 @@ struct AppSelectionView: View {
             }
         }
         .onDisappear {
-            // 视图消失时清理资源
             appsManager.cleanup()
         }
         .onTapGesture {
-            // 点击外部关闭下拉菜单
             if isDropdownExpanded {
                 closeDropdown()
             }
@@ -193,7 +183,6 @@ struct AppSelectionView: View {
             isDropdownExpanded.toggle()
         }
         
-        // 首次打开时才开始加载应用
         if isDropdownExpanded && appsManager.installedApps.isEmpty {
             appsManager.loadInstalledApps()
         }
@@ -212,12 +201,10 @@ struct AppSelectionView: View {
         
         closeDropdown()
         
-        // 清空搜索
         searchText = ""
     }
 }
 
-// MARK: - 子视图组件
 
 struct LoadingView: View {
     var body: some View {
@@ -288,14 +275,12 @@ struct AppRowView: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 10) {
-                // 应用图标 - 懒加载优化
                 if let icon = app.icon {
                     Image(nsImage: icon)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 24, height: 24)
                 } else {
-                    // 占位图标
                     RoundedRectangle(cornerRadius: 4)
                         .fill(Color.secondary.opacity(0.2))
                         .frame(width: 24, height: 24)
@@ -306,7 +291,6 @@ struct AppRowView: View {
                         )
                 }
                 
-                // 应用信息
                 VStack(alignment: .leading, spacing: 2) {
                     Text(app.name)
                         .font(.body)
@@ -321,7 +305,6 @@ struct AppRowView: View {
                 
                 Spacer()
                 
-                // 选择指示器
                 if isHovered {
                     Image(systemName: "chevron.right")
                         .font(.caption)

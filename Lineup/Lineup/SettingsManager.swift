@@ -1,6 +1,6 @@
 //
 //  SettingsManager.swift
-//  DevSwitcher2
+//  Lineup
 //
 //  Created by river on 2025-07-26.
 //
@@ -179,60 +179,6 @@ enum SwitcherHeaderStyle: String, CaseIterable, Codable {
     }
 }
 
-// MARK: - Switcher Layout Style
-enum SwitcherLayoutStyle: String, CaseIterable, Codable {
-    case list = "list"
-    case circular = "circular"
-    
-    var displayName: String {
-        switch self {
-        case .list:
-            return LocalizedStrings.layoutStyleList
-        case .circular:
-            return LocalizedStrings.layoutStyleCircular
-        }
-    }
-}
-
-// MARK: - Selected Item Display Style
-enum SelectedItemDisplayStyle: String, CaseIterable, Codable {
-    case floating = "floating"
-    case noFloating = "noFloating"
-
-    var displayName: String {
-        switch self {
-        case .floating:
-            return LocalizedStrings.selectedItemDisplayStyleFloating
-        case .noFloating:
-            return LocalizedStrings.selectedItemDisplayStyleNoFloating
-        }
-    }
-}
-
-// MARK: - Circular Outer Ring Style
-enum CircularOuterRingStyle: String, CaseIterable, Codable {
-    case transparent = "transparent"
-    case frosted = "frosted"
-
-    var displayName: String {
-        switch self {
-        case .transparent:
-            return LocalizedStrings.circularLayoutOuterRingStyleTransparent
-        case .frosted:
-            return LocalizedStrings.circularLayoutOuterRingStyleFrosted
-        }
-    }
-
-    var opacity: Double {
-        switch self {
-        case .transparent:
-            return 0.1
-        case .frosted:
-            return 1.0
-        }
-    }
-}
-
 // MARK: - Color Scheme Enum
 enum ColorScheme: String, CaseIterable, Codable {
     case system = "system"
@@ -276,23 +222,23 @@ enum ColorScheme: String, CaseIterable, Codable {
         case .system:
             return .accentColor
         case .cyberpunk:
-            return Color(red: 0.0, green: 1.0, blue: 0.8) // 青色
+            return Color(red: 0.0, green: 1.0, blue: 0.8)
         case .sunset:
-            return Color(red: 1.0, green: 0.4, blue: 0.2) // 橙红色
+            return Color(red: 1.0, green: 0.4, blue: 0.2)
         case .forest:
-            return Color(red: 0.2, green: 0.8, blue: 0.4) // 绿色
+            return Color(red: 0.2, green: 0.8, blue: 0.4)
         case .ocean:
-            return Color(red: 0.2, green: 0.6, blue: 1.0) // 蓝色
+            return Color(red: 0.2, green: 0.6, blue: 1.0)
         case .rose:
-            return Color(red: 1.0, green: 0.2, blue: 0.6) // 粉红色
+            return Color(red: 1.0, green: 0.2, blue: 0.6)
         case .graphite:
-            return Color(red: 0.4, green: 0.4, blue: 0.5) // 石墨色
+            return Color(red: 0.4, green: 0.4, blue: 0.5)
         case .indigo:
-            return Color(red: 0.4, green: 0.2, blue: 0.8) // 靛蓝色
+            return Color(red: 0.4, green: 0.2, blue: 0.8)
         case .aurora:
-            return Color(red: 0.0, green: 0.8, blue: 0.6) // 极光绿
+            return Color(red: 0.0, green: 0.8, blue: 0.6)
         case .midnight:
-            return Color(red: 0.6, green: 0.2, blue: 0.8) // 午夜紫
+            return Color(red: 0.6, green: 0.2, blue: 0.8)
         }
     }
     
@@ -301,23 +247,23 @@ enum ColorScheme: String, CaseIterable, Codable {
         case .system:
             return .accentColor.opacity(0.7)
         case .cyberpunk:
-            return Color(red: 1.0, green: 0.0, blue: 0.8) // 洋红色
+            return Color(red: 1.0, green: 0.0, blue: 0.8)
         case .sunset:
-            return Color(red: 1.0, green: 0.8, blue: 0.0) // 金黄色
+            return Color(red: 1.0, green: 0.8, blue: 0.0)
         case .forest:
-            return Color(red: 0.0, green: 0.6, blue: 0.3) // 深绿色
+            return Color(red: 0.0, green: 0.6, blue: 0.3)
         case .ocean:
-            return Color(red: 0.0, green: 0.8, blue: 0.8) // 青色
+            return Color(red: 0.0, green: 0.8, blue: 0.8)
         case .rose:
-            return Color(red: 0.8, green: 0.0, blue: 0.4) // 深粉红色
+            return Color(red: 0.8, green: 0.0, blue: 0.4)
         case .graphite:
-            return Color(red: 0.6, green: 0.6, blue: 0.7) // 浅石墨色
+            return Color(red: 0.6, green: 0.6, blue: 0.7)
         case .indigo:
-            return Color(red: 0.2, green: 0.0, blue: 0.6) // 深靛蓝色
+            return Color(red: 0.2, green: 0.0, blue: 0.6)
         case .aurora:
-            return Color(red: 0.0, green: 0.4, blue: 0.8) // 深蓝色
+            return Color(red: 0.0, green: 0.4, blue: 0.8)
         case .midnight:
-            return Color(red: 0.4, green: 0.0, blue: 0.6) // 深紫色
+            return Color(red: 0.4, green: 0.0, blue: 0.6)
         }
     }
     
@@ -326,23 +272,23 @@ enum ColorScheme: String, CaseIterable, Codable {
         case .system:
             return .accentColor
         case .cyberpunk:
-            return Color(red: 0.0, green: 1.0, blue: 1.0) // 亮青色
+            return Color(red: 0.0, green: 1.0, blue: 1.0)
         case .sunset:
-            return Color(red: 1.0, green: 0.6, blue: 0.0) // 橙色
+            return Color(red: 1.0, green: 0.6, blue: 0.0)
         case .forest:
-            return Color(red: 0.4, green: 1.0, blue: 0.6) // 亮绿色
+            return Color(red: 0.4, green: 1.0, blue: 0.6)
         case .ocean:
-            return Color(red: 0.4, green: 0.8, blue: 1.0) // 天蓝色
+            return Color(red: 0.4, green: 0.8, blue: 1.0)
         case .rose:
-            return Color(red: 1.0, green: 0.4, blue: 0.8) // 亮粉红色
+            return Color(red: 1.0, green: 0.4, blue: 0.8)
         case .graphite:
-            return Color(red: 0.8, green: 0.8, blue: 0.9) // 亮石墨色
+            return Color(red: 0.8, green: 0.8, blue: 0.9)
         case .indigo:
-            return Color(red: 0.6, green: 0.4, blue: 1.0) // 亮靛蓝色
+            return Color(red: 0.6, green: 0.4, blue: 1.0)
         case .aurora:
-            return Color(red: 0.2, green: 1.0, blue: 0.8) // 亮极光绿
+            return Color(red: 0.2, green: 1.0, blue: 0.8)
         case .midnight:
-            return Color(red: 0.8, green: 0.4, blue: 1.0) // 亮午夜紫
+            return Color(red: 0.8, green: 0.4, blue: 1.0)
         }
     }
     
@@ -500,24 +446,15 @@ struct AppSettings: Codable {
     
     // Switcher behavior settings
     var switcherFollowActiveWindow: Bool
-    
+
+    // Include windows living on other Spaces / desktops, not just the current one
+    var showWindowsFromAllSpaces: Bool
+
     // Switcher position settings
     var switcherVerticalPosition: Double // 0.1 to 0.8, default 0.39 (golden ratio)
     
     // Switcher header style settings
     var switcherHeaderStyle: SwitcherHeaderStyle
-    
-    // Switcher layout style settings
-    var switcherLayoutStyle: SwitcherLayoutStyle
-    
-    // Circular layout size settings (1.0 = small, 2.0 = large)
-    var circularLayoutSize: Double
-    
-    // Circular layout outer ring style settings
-    var circularLayoutOuterRingStyle: CircularOuterRingStyle
-
-    // Selected item display style settings
-    var selectedItemDisplayStyle: SelectedItemDisplayStyle
 
     // Color scheme settings
     var colorScheme: ColorScheme
@@ -569,18 +506,12 @@ struct AppSettings: Codable {
         showNumberKeys: true,
         // Switcher behavior default settings
         switcherFollowActiveWindow: true,
+        // Include windows from all Spaces by default
+        showWindowsFromAllSpaces: true,
         // Switcher position default settings
         switcherVerticalPosition: 0.39,
         // Switcher header style default settings
         switcherHeaderStyle: .default,
-        // Switcher layout style default settings
-        switcherLayoutStyle: .list,
-        // Circular layout size default settings
-        circularLayoutSize: 1.0,
-        // Circular layout outer ring style default settings
-        circularLayoutOuterRingStyle: .frosted,
-        // Selected item display style default settings
-        selectedItemDisplayStyle: .floating,
         // Color scheme default settings
         colorScheme: .system
     )
@@ -591,7 +522,7 @@ class SettingsManager: ObservableObject {
     @Published var settings: AppSettings
     
     private let userDefaults = UserDefaults.standard
-    private let settingsKey = "DevSwitcher2Settings"
+    private let settingsKey = "LineupSettings"
     
     static let shared = SettingsManager()
     
@@ -679,6 +610,11 @@ class SettingsManager: ObservableObject {
         settings.switcherFollowActiveWindow = enabled
         saveSettings()
     }
+
+    func updateShowWindowsFromAllSpaces(_ enabled: Bool) {
+        settings.showWindowsFromAllSpaces = enabled
+        saveSettings()
+    }
     
     // MARK: - Switcher Position Settings
     func updateSwitcherVerticalPosition(_ position: Double) {
@@ -694,31 +630,6 @@ class SettingsManager: ObservableObject {
         saveSettings()
     }
     
-    // MARK: - Switcher Layout Style Settings
-    func updateSwitcherLayoutStyle(_ style: SwitcherLayoutStyle) {
-        settings.switcherLayoutStyle = style
-        saveSettings()
-    }
-    
-    // MARK: - Circular Layout Size Settings
-    func updateCircularLayoutSize(_ size: Double) {
-        let clampedSize = max(1.0, min(2.0, size))
-        settings.circularLayoutSize = clampedSize
-        saveSettings()
-    }
-    
-    // MARK: - Circular Layout Outer Ring Style Settings
-    func updateCircularLayoutOuterRingStyle(_ style: CircularOuterRingStyle) {
-        settings.circularLayoutOuterRingStyle = style
-        saveSettings()
-    }
-
-    // MARK: - Selected Item Display Style Settings
-    func updateSelectedItemDisplayStyle(_ style: SelectedItemDisplayStyle) {
-        settings.selectedItemDisplayStyle = style
-        saveSettings()
-    }
-
     // MARK: - Color Scheme Settings
     func updateColorScheme(_ scheme: ColorScheme) {
         settings.colorScheme = scheme
@@ -726,7 +637,7 @@ class SettingsManager: ObservableObject {
     }
     
     private func setLaunchAtStartup(_ enabled: Bool) {
-        let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.unknown.DevSwitcher2"
+        let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.unknown.Lineup"
         
         if enabled {
             // Add to login items
@@ -796,9 +707,9 @@ class SettingsManager: ObservableObject {
     
     // MARK: - App Title Configuration
     func getAppTitleConfig(for bundleId: String) -> AppTitleConfig? {
-        Logger.log("获取自定义config: \(bundleId)")
+        Logger.log("Getting custom config: \(bundleId)")
         let config = settings.appTitleConfigs[bundleId]
-        Logger.log("获取自定义config: \(String(describing: config))")
+        Logger.log("Custom config: \(String(describing: config))")
         return config
     }
     
@@ -821,9 +732,9 @@ class SettingsManager: ObservableObject {
     // MARK: - Generic Title Extraction Algorithm
     func extractProjectName(from title: String, bundleId: String, appName: String) -> String {
         // First check if there are app-specific configurations
-        Logger.log("准备截断标题: \(bundleId)")
+        Logger.log("Preparing to truncate title: \(bundleId)")
         if let config = getAppTitleConfig(for: bundleId) {
-            Logger.log("使用自定义config: \(config)")
+            Logger.log("Using custom config: \(config)")
             return extractProjectNamePrivate(from: title, using: config.strategy, customSeparator: config.customSeparator)
         }
         
@@ -858,14 +769,12 @@ class SettingsManager: ObservableObject {
     }
     
     private func extractFirstPart(from title: String, customSeparator: String?) -> String {
-        // 如果指定了自定义分隔符，优先使用
         if let customSeparator = customSeparator, !customSeparator.isEmpty {
             if let range = title.range(of: customSeparator) {
                 return String(title[..<range.lowerBound]).trimmingCharacters(in: .whitespaces)
             }
         }
         
-        // 否则使用默认分隔符列表
         let commonSeparators = [" - ", " — ", " | ", " / ", " \\ "]
         
         for separator in commonSeparators {
@@ -878,14 +787,12 @@ class SettingsManager: ObservableObject {
     }
     
     private func extractLastPart(from title: String, customSeparator: String?) -> String {
-        // 如果指定了自定义分隔符，优先使用
         if let customSeparator = customSeparator, !customSeparator.isEmpty {
             if let range = title.range(of: customSeparator, options: .backwards) {
                 return String(title[range.upperBound...]).trimmingCharacters(in: .whitespaces)
             }
         }
         
-        // 否则使用默认分隔符列表
         let commonSeparators = [" - ", " — ", " | ", " / ", " \\ "]
         
         for separator in commonSeparators {
@@ -898,14 +805,12 @@ class SettingsManager: ObservableObject {
     }
     
     private func extractBeforeFirstSeparator(from title: String, customSeparator: String?) -> String {
-        // 如果指定了自定义分隔符，优先使用
         if let customSeparator = customSeparator, !customSeparator.isEmpty {
             if let range = title.range(of: customSeparator) {
                 return String(title[..<range.lowerBound]).trimmingCharacters(in: .whitespaces)
             }
         }
         
-        // 否则使用默认分隔符列表
         let commonSeparators = [" — ", " - ", " | ", " / ", " \\ "]
         
         for separator in commonSeparators {
@@ -918,14 +823,12 @@ class SettingsManager: ObservableObject {
     }
     
     private func extractAfterLastSeparator(from title: String, customSeparator: String?) -> String {
-        // 如果指定了自定义分隔符，优先使用
         if let customSeparator = customSeparator, !customSeparator.isEmpty {
             if let range = title.range(of: customSeparator, options: .backwards) {
                 return String(title[range.upperBound...]).trimmingCharacters(in: .whitespaces)
             }
         }
         
-        // 否则使用默认分隔符列表
         let commonSeparators = [" — ", " - ", " | ", " / ", " \\ "]
         
         for separator in commonSeparators {

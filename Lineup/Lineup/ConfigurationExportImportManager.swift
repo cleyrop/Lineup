@@ -1,6 +1,6 @@
 //
 //  ConfigurationExportImportManager.swift
-//  DevSwitcher2
+//  Lineup
 //
 //  Created by river on 2025-07-30.
 //
@@ -8,14 +8,12 @@
 import Foundation
 import AppKit
 
-// MARK: - 导出/导入数据结构
 
 struct ExportedConfiguration: Codable {
     let version: String
     let exportDate: String
     let appTitleConfigs: [AppTitleConfig]
     
-    // 元数据
     struct Metadata: Codable {
         let appVersion: String
         let systemVersion: String
@@ -36,7 +34,6 @@ struct ExportedConfiguration: Codable {
     }
 }
 
-// MARK: - 导入结果
 
 struct ImportResult {
     let totalImported: Int
@@ -53,13 +50,11 @@ struct ImportResult {
     }
 }
 
-// MARK: - 配置导出/导入管理器
 
 class ConfigurationExportImportManager: ObservableObject {
     @Published var isProcessing = false
     private let settingsManager = SettingsManager.shared
     
-    // MARK: - 导出功能
     
     func exportConfiguration() -> Result<String, Error> {
         do {
@@ -121,10 +116,9 @@ class ConfigurationExportImportManager: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
         let timestamp = formatter.string(from: Date())
-        return "DevSwitcher2_Config_\(timestamp).json"
+        return "Lineup_Config_\(timestamp).json"
     }
     
-    // MARK: - 导入功能
     
     func importConfigurationFromFile() -> Result<ImportResult, Error> {
         let openPanel = NSOpenPanel()
@@ -185,12 +179,10 @@ class ConfigurationExportImportManager: ObservableObject {
         for config in importedConfigs {
             do {
                 if settingsManager.settings.appTitleConfigs[config.bundleId] != nil {
-                    // 更新现有配置
                     settingsManager.setAppTitleConfig(config)
                     updatedConfigs += 1
                     Logger.log("🔄 Updated config for: \(config.appName) (\(config.bundleId))")
                 } else {
-                    // 添加新配置
                     settingsManager.setAppTitleConfig(config)
                     newConfigs += 1
                     Logger.log("➕ Added new config for: \(config.appName) (\(config.bundleId))")
@@ -210,7 +202,6 @@ class ConfigurationExportImportManager: ObservableObject {
         )
     }
     
-    // MARK: - 工具方法
     
     func validateConfigurationFile(_ url: URL) -> Result<ExportedConfiguration.Metadata, Error> {
         do {
@@ -226,7 +217,6 @@ class ConfigurationExportImportManager: ObservableObject {
     }
 }
 
-// MARK: - 错误类型
 
 enum ConfigurationError: LocalizedError {
     case encodingFailed

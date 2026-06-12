@@ -1,6 +1,6 @@
 //
-//  DevSwitcher2App.swift
-//  DevSwitcher2
+//  LineupApp.swift
+//  Lineup
 //
 //  Created by river on 2025-07-26.
 //
@@ -9,7 +9,7 @@ import SwiftUI
 import AppKit
 
 @main
-struct DevSwitcher2App: App {
+struct LineupApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
     var body: some Scene {
