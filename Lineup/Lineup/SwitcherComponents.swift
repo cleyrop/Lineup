@@ -347,6 +347,30 @@ struct BaseSwitcherView<ItemType>: View {
     }
 }
 
+// MARK: - Window State Badge
+/// Small pill on a list item flagging where a window lives — the Dock (minimized)
+/// or another desktop / Space.
+struct WindowStateBadge: View {
+    let systemImage: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: systemImage)
+            Text(text)
+        }
+        .font(.system(.caption2, design: .rounded).weight(.medium))
+        .foregroundColor(.secondary)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(
+            Capsule()
+                .fill(.regularMaterial)
+                .overlay(Capsule().stroke(.quaternary, lineWidth: 0.5))
+        )
+    }
+}
+
 // MARK: - Window Item Content View
 struct WindowItemContentView: View {
     let window: WindowInfo
@@ -373,14 +397,25 @@ struct WindowItemContentView: View {
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 
-                // App name
-                Text(window.appName)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                
-                // Full window title (auxiliary info)
-                if window.title != window.projectName {
+                // App name, with a badge for windows in the Dock or on another desktop
+                HStack(spacing: 6) {
+                    Text(window.appName)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+
+                    if window.isMinimized {
+                        WindowStateBadge(systemImage: "dock.rectangle",
+                                         text: LocalizedStrings.minimizedInDock)
+                    } else if window.isOnOtherSpace {
+                        WindowStateBadge(systemImage: "macwindow.on.rectangle",
+                                         text: LocalizedStrings.onOtherDesktop)
+                    }
+                }
+
+                // Full window title — always shown for windows that aren't on the
+                // current screen so an off-Space / Dock window is identifiable.
+                if window.title != window.projectName || window.isMinimized || window.isOnOtherSpace {
                     Text(window.title)
                         .font(.caption)
                         .foregroundColor(.secondary.opacity(0.7))
@@ -473,14 +508,6 @@ struct AppItemContentView: View {
                     Text(LocalizedStrings.singleWindow)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                
-                // If there's a first window, show its title as auxiliary info
-                if let firstWindow = app.firstWindow, !firstWindow.projectName.isEmpty {
-                    Text(firstWindow.projectName)
-                        .font(.caption)
-                        .foregroundColor(.secondary.opacity(0.7))
                         .lineLimit(1)
                 }
             }

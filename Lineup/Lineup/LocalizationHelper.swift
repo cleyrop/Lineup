@@ -121,7 +121,9 @@ struct LocalizedStrings {
     static func multipleWindows(_ count: Int) -> String {
         return "multiple_windows".localized(with: count)
     }
-    
+    static let minimizedInDock = "minimized_in_dock".localized
+    static let onOtherDesktop = "on_other_desktop".localized
+
     // MARK: - Status Bar
     static let statusItemTooltip = "status_item_tooltip".localized
     
@@ -364,31 +366,27 @@ struct LocalizedStrings {
     static let colorSchemeAurora = "color_scheme_aurora".localized
     static let colorSchemeMidnight = "color_scheme_midnight".localized
     static let colorSchemePreviewTitle = "color_scheme_preview_title".localized
-    static let colorSchemeCircularPreview = "color_scheme_circular_preview".localized
-    static let colorSchemeListPreview = "color_scheme_list_preview".localized
     static let colorSchemeSampleApp = "color_scheme_sample_app".localized
     static let colorSchemeSampleWindow = "color_scheme_sample_window".localized
     
     // MARK: - About Page
-    static let aboutApp = "about_app".localized
     static let version = "version".localized
     static let appDescription = "app_description".localized
     static let mainFeatures = "main_features".localized
-    static let feature1 = "feature_1".localized
-    static let feature2 = "feature_2".localized
-    static let feature3 = "feature_3".localized
-    static let feature4 = "feature_4".localized
-    static let feature5 = "feature_5".localized
-    static let feature6 = "feature_6".localized
+    static let feature1Title = "feature_1_title".localized
+    static let feature1Detail = "feature_1_detail".localized
+    static let feature2Title = "feature_2_title".localized
+    static let feature2Detail = "feature_2_detail".localized
+    static let feature3Title = "feature_3_title".localized
+    static let feature3Detail = "feature_3_detail".localized
+    static let feature4Title = "feature_4_title".localized
+    static let feature4Detail = "feature_4_detail".localized
+    static let feature5Title = "feature_5_title".localized
+    static let feature5Detail = "feature_5_detail".localized
+    static let feature6Title = "feature_6_title".localized
+    static let feature6Detail = "feature_6_detail".localized
     static let developmentInfo = "development_info".localized
-    static let author = "author".localized
     static let gitHub = "github".localized
-    static let openGitHub = "open_github".localized
-    static let website = "website".localized
-    static let openWebsite = "open_website".localized
-    static let buyMeCoffee = "buy_me_coffee".localized
-    static let supportDevelopment = "support_development".localized
-    static let coffeeDescription = "coffee_description".localized
     static let copyright = "copyright".localized
 }
 

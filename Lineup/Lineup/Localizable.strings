@@ -36,6 +36,8 @@
 // MARK: - Application Item Display
 "single_window" = "1 window";
 "multiple_windows" = "%d windows";
+"minimized_in_dock" = "Dock";
+"on_other_desktop" = "Other Desktop";
 
 // MARK: - Status Bar
 "status_item_tooltip" = "Lineup - Enhanced Window Switching";
@@ -257,26 +259,24 @@
 "no_app_configs_message" = "No app-specific configurations";
 
 // MARK: - About Page
-"about_app" = "About Lineup";
 "version" = "Version 1.0.0";
-"app_description" = "Lineup is a modern macOS productivity tool that enhances your window and application switching experience with dual-mode switching capabilities.";
-"main_features" = "Main Features:";
-"feature_1" = "• DS2 Mode: Enhanced same-app window switching";
-"feature_2" = "• CT2 Mode: Improved Command+Tab for all apps";
-"feature_3" = "• Smart title extraction with multiple strategies";
-"feature_4" = "• Customizable hotkeys and app-specific rules";
-"feature_5" = "• Multi-display support with intelligent focus transfer";
-"feature_6" = "• Icon caching system for smooth performance";
-"development_info" = "Development Information";
-"author" = "Maintained by Cleyrop";
+"app_description" = "A fast, list-only window switcher for macOS. Flip through an app's windows — or all your apps — in a clean vertical list, with windows from every desktop and the Dock.";
+"main_features" = "Features";
+"feature_1_title" = "Same-app window switcher";
+"feature_1_detail" = "Press ⌘ + ` to cycle every window of the current app.";
+"feature_2_title" = "App switcher";
+"feature_2_detail" = "An enhanced ⌘ + Tab that lists all running apps.";
+"feature_3_title" = "Windows from every Space";
+"feature_3_detail" = "Finds and switches to windows on other desktops, not just the current one.";
+"feature_4_title" = "Restore from the Dock";
+"feature_4_detail" = "Minimized windows show a Dock badge and pop back out when selected.";
+"feature_5_title" = "Keyboard-first navigation";
+"feature_5_detail" = "Arrow keys, number keys 1–9, or hold-and-release — whichever you prefer.";
+"feature_6_title" = "Smart window titles";
+"feature_6_detail" = "Extracts the meaningful project name from noisy titles, configurable per app.";
+"development_info" = "Project";
 "github" = "GitHub Repository";
-"open_github" = "GitHub";
-"website" = "Official Website";
-"open_website" = "Visit Website";
-"buy_me_coffee" = "Buy Me a Coffee";
-"support_development" = "Support Development";
-"coffee_description" = "If you find Lineup helpful, consider buying me a coffee to support continued development!";
-"copyright" = "© 2025 Cleyrop. All rights reserved.";
+"copyright" = "© 2025 Cleyrop. All rights reserved. Forked from DevSwitcher2.";
 
 // MARK: - Color Scheme Settings
 "color_scheme_section_title" = "Color Scheme";
@@ -293,7 +293,5 @@
 "color_scheme_aurora" = "Aurora";
 "color_scheme_midnight" = "Midnight";
 "color_scheme_preview_title" = "Preview";
-"color_scheme_circular_preview" = "Circular View";
-"color_scheme_list_preview" = "List View";
 "color_scheme_sample_app" = "Sample App";
 "color_scheme_sample_window" = "Window Title"; 

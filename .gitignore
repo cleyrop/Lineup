@@ -124,3 +124,6 @@ Lineup.app
 .local
 logo.png
 .vscode
+
+# Coverage artifacts
+*.profraw

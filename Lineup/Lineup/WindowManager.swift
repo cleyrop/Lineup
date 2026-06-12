@@ -11,13 +11,23 @@ import CoreGraphics
 import SwiftUI
 import ApplicationServices
 
+// Private SPI declarations live in PrivateApis.swift (_AXUIElementGetWindow,
+// the SkyLight/CGS functions, etc.).
+
 struct WindowInfo {
     let windowID: CGWindowID
     let title: String
     let projectName: String
     let appName: String
     let processID: pid_t
-    let axWindowIndex: Int  // AX window index
+    let axWindowIndex: Int  // legacy CT2 coupling; ignored by the SkyLight DS2 focus path
+    var isMinimized: Bool = false  // window is minimized to the Dock
+    var isOnOtherSpace: Bool = false  // window lives on another Space / desktop
+
+    // Populated by the SkyLight DS2 enumeration only:
+    var cgWindowID: CGWindowID = 0    // real window-server id, used for focus
+    var spaceID: CGSSpaceID = 0       // the Space the window lives on
+    var axElement: AXUIElement? = nil // resolved at enumeration time (covers off-Space windows)
 }
 
 // MARK: - App Info Data Structure
@@ -25,20 +35,8 @@ struct AppInfo {
     let bundleId: String
     let processID: pid_t
     let appName: String
-    let firstWindow: WindowInfo?  // First window of this app
-    let windowCount: Int         // Total window count of this app
-    let isActive: Bool           // Whether it's the currently active app
-    let lastUsedTime: Date?      // Last used time
-    
-    init(bundleId: String, processID: pid_t, appName: String, windows: [WindowInfo], isActive: Bool = false, lastUsedTime: Date? = nil) {
-        self.bundleId = bundleId
-        self.processID = processID
-        self.appName = appName
-        self.firstWindow = windows.first
-        self.windowCount = windows.count
-        self.isActive = isActive
-        self.lastUsedTime = lastUsedTime
-    }
+    let windowCount: Int  // Total window count of this app (best-effort)
+    let isActive: Bool    // Whether it's the currently active app
 }
 
 class WindowManager: ObservableObject {
@@ -273,7 +271,6 @@ class WindowManager: ObservableObject {
             axElementCache.removeValue(forKey: windowID)
         }
         
-        let afterProcessCleanup = axElementCache.count
         Logger.log("🗑️ Removing AX elements for terminated processes: \(itemsToRemove.count) items")
         
         // If still over limit, perform LRU cleanup
@@ -302,7 +299,7 @@ class WindowManager: ObservableObject {
         }
         
         // Not in cache, get new AX element
-        let (_, axElement) = getAXWindowInfo(windowID: windowID, processID: processID, windowIndex: windowIndex)
+        let (_, axElement, _) = getAXWindowInfo(windowID: windowID, processID: processID, windowIndex: windowIndex)
         
         if let element = axElement {
             // Check if cleanup is needed before adding to cache
@@ -700,295 +697,314 @@ class WindowManager: ObservableObject {
         Logger.log("   Bundle ID: \(targetApp.bundleIdentifier ?? "Unknown")")
         Logger.log("\n📋 System found \(windowList.count) windows in total")
         
-        var candidateWindows: [[String: Any]] = []
-        var validWindows: [[String: Any]] = []
-        var windowCounter = 1
-        var windowIndexByProcess: [pid_t: Int] = [:]
+        enumerateAppWindowsViaAX(targetApp: targetApp)
 
-        for windowInfo in windowList {
-            guard let processID = windowInfo[kCGWindowOwnerPID as String] as? pid_t else { continue }
-            let ownerName = windowInfo[kCGWindowOwnerName as String] as? String
+        Logger.log("📊 Final added windows: \(windows.count)")
+        Logger.log("=== Debug Information End ===\n")
+    }
 
-            if windowBelongsToApp(
-                windowProcessID: processID,
-                ownerName: ownerName,
-                targetApp: targetApp,
-                runningAppMap: runningAppMap,
-                bundlePrimaryApp: bundlePrimaryApp
-            ) {
-                candidateWindows.append(windowInfo)
-                
-                let windowTitle = windowInfo[kCGWindowName as String] as? String ?? ""
-                let layer = windowInfo[kCGWindowLayer as String] as? Int ?? -1
-                let windowID = windowInfo[kCGWindowNumber as String] as? CGWindowID ?? 0
-                let isOnScreen = windowInfo[kCGWindowIsOnscreen as String] as? Bool ?? false
-                
-                Logger.log("🔎 Checking target application window:")
-                Logger.log("   Owner: \(ownerName ?? "Unknown") (PID: \(processID))")
-                Logger.log("   Title: '\(windowTitle)'")
-                Logger.log("   Layer: \(layer)")
-                Logger.log("   ID: \(windowID)")
-                Logger.log("   OnScreen: \(isOnScreen)")
-                
-                let hasValidID = windowInfo[kCGWindowNumber as String] is CGWindowID
-                let hasValidLayer = isValidWindowLayer(layer, forBundleId: targetApp.bundleIdentifier)
-                let bounds = windowInfo[kCGWindowBounds as String] as? [String: Any]
-                let width = (bounds?["Width"] as? NSNumber)?.intValue ?? 0
-                let height = (bounds?["Height"] as? NSNumber)?.intValue ?? 0
-                let hasReasonableSize = width > 100 && height > 100
-                
-                Logger.log("   Filter check: ID=\(hasValidID), Layer=\(hasValidLayer), Size=\(width)x\(height), ReasonableSize=\(hasReasonableSize)")
-                
-                if hasValidID && hasValidLayer && hasReasonableSize {
-                    validWindows.append(windowInfo)
+    /// Enumerate the target app's windows across ALL Spaces + the Dock.
+    ///
+    /// kAXWindowsAttribute alone omits windows on other Spaces (confirmed in
+    /// AltTab's source and our own logs), so we union it with a remote-token
+    /// brute-force that reaches off-Space windows, then read each window's real
+    /// id, title, minimized state and Space from its AX element. Current-Space
+    /// windows are ordered by their window-server z-order; off-Space windows and
+    /// minimized ones follow.
+    private func enumerateAppWindowsViaAX(targetApp: NSRunningApplication) {
+        windows.append(contentsOf: appWindows(of: targetApp))
+    }
 
-                    let currentIndex = windowIndexByProcess[processID] ?? 0
-                    windowIndexByProcess[processID] = currentIndex + 1
-                    
-                    let (axTitle, _) = getAXWindowInfo(windowID: windowID, processID: processID, windowIndex: currentIndex)
-                    
-                    let displayTitle: String
-                    let projectName: String
-                    
-                    if !axTitle.isEmpty {
-                        displayTitle = axTitle
-                        projectName = settingsManager.extractProjectName(
-                            from: axTitle,
-                            bundleId: targetApp.bundleIdentifier ?? "",
-                            appName: targetApp.localizedName ?? ""
-                        )
-                    } else if !windowTitle.isEmpty {
-                        displayTitle = windowTitle
-                        projectName = settingsManager.extractProjectName(
-                            from: windowTitle,
-                            bundleId: targetApp.bundleIdentifier ?? "",
-                            appName: targetApp.localizedName ?? ""
-                        )
-                    } else {
-                        displayTitle = "\(targetApp.localizedName ?? "App") window \(windowCounter)"
-                        projectName = displayTitle
-                        windowCounter += 1
-                    }
-                    
-                    let window = WindowInfo(
-                        windowID: windowID,
-                        title: displayTitle,
-                        projectName: projectName,
-                        appName: targetApp.localizedName ?? "",
-                        processID: processID,
-                        axWindowIndex: currentIndex
-                    )
-                    
-                    windows.append(window)
-                    Logger.log("   ✅ Window added: '\(projectName)'")
-                } else {
-                    Logger.log("   ❌ Window filtered out")
+    /// Compute the target app's windows across all Spaces + the Dock. Pure with
+    /// respect to `self` (reads only the Accessibility/WindowServer state), so it
+    /// is the testable entry point for the enumeration logic.
+    func appWindows(of targetApp: NSRunningApplication) -> [WindowInfo] {
+        var windows = [WindowInfo]()
+        let pid = targetApp.processIdentifier
+
+        let visibleSpaces = visibleSpaceIDs()
+        let axWindows = allAppWindows(pid)
+
+        // z-order of windows on the visible Space(s), topmost first.
+        let zOrder = visibleSpaces.isEmpty ? [] : windowsInSpaces(Array(visibleSpaces), includeInvisible: true)
+        var zIndex = [CGWindowID: Int]()
+        for (i, wid) in zOrder.enumerated() { zIndex[wid] = i }
+
+        let syntheticIDBase: CGWindowID = 0xF000_0000
+        var seen = Set<CGWindowID>()
+        var built = [(order: Int, info: WindowInfo)]()
+
+        for axWindow in axWindows {
+            guard isStandardWindow(axWindow) else { continue }
+
+            var cgID: CGWindowID = 0
+            _ = _AXUIElementGetWindow(axWindow, &cgID)
+            if cgID != 0 {
+                if seen.contains(cgID) { continue }
+                seen.insert(cgID)
+            }
+
+            let minimized = isWindowMinimized(axWindow)
+            let spaces = cgID != 0 ? spacesForWindow(cgID) : []
+            let spaceID = spaces.first ?? 0
+            // Unknown Space (empty) is treated as current, so a window is only
+            // "other Space" when we positively know its Space isn't visible.
+            let onCurrent = spaces.isEmpty || spaces.contains { visibleSpaces.contains($0) }
+            let onOtherSpace = !minimized && !onCurrent
+
+            let axTitle = windowTitle(axWindow)
+            let displayTitle: String
+            let projectName: String
+            if !axTitle.isEmpty {
+                displayTitle = axTitle
+                projectName = settingsManager.extractProjectName(
+                    from: axTitle,
+                    bundleId: targetApp.bundleIdentifier ?? "",
+                    appName: targetApp.localizedName ?? ""
+                )
+            } else {
+                displayTitle = targetApp.localizedName ?? "Window"
+                projectName = displayTitle
+            }
+
+            let cacheID = cgID != 0 ? cgID : syntheticIDBase + CGWindowID(built.count)
+
+            // Ordering: current-Space windows by z-order, then off-Space, then Dock.
+            let order: Int
+            if let z = zIndex[cgID] { order = z }
+            else if minimized { order = 2_000_000 }
+            else { order = 1_000_000 }
+
+            let window = WindowInfo(
+                windowID: cacheID,
+                title: displayTitle,
+                projectName: projectName,
+                appName: targetApp.localizedName ?? "",
+                processID: pid,
+                axWindowIndex: 0,
+                isMinimized: minimized,
+                isOnOtherSpace: onOtherSpace,
+                cgWindowID: cgID,
+                spaceID: spaceID,
+                axElement: axWindow
+            )
+            built.append((order, window))
+        }
+
+        built.sort { $0.order < $1.order }
+        for (_, w) in built {
+            windows.append(w)
+            Logger.log("   ✅ '\(w.projectName)' wid=\(w.cgWindowID) space=\(w.spaceID) min=\(w.isMinimized) other=\(w.isOnOtherSpace)")
+        }
+        return windows
+    }
+
+    /// Union of the app's on-current-Space AX windows (kAXWindowsAttribute, which
+    /// also catches freshly-launched windows brute-force misses) and the
+    /// remote-token brute-force (which reaches windows on other Spaces).
+    private func allAppWindows(_ pid: pid_t) -> [AXUIElement] {
+        var result = [AXUIElement]()
+
+        let axApp = AXUIElementCreateApplication(pid)
+        var windowsRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+           let axWindows = windowsRef as? [AXUIElement] {
+            result.append(contentsOf: axWindows)
+        }
+        // The remote-token brute-force is the only thing that reaches windows on
+        // OTHER Spaces, and it is the expensive step (~100 ms). kAXWindowsAttribute
+        // already covers the current Space + the Dock, so skip the brute-force
+        // entirely when the user isn't asking for other-Space windows.
+        if settingsManager.settings.showWindowsFromAllSpaces {
+            result.append(contentsOf: windowsByBruteForce(pid))
+        }
+        return result
+    }
+
+    /// Brute-force the app's windows by probing AXUIElementIDs through remote
+    /// tokens. Ported from AltTab — this is what surfaces windows on other Spaces,
+    /// which kAXWindowsAttribute does not return.
+    private func windowsByBruteForce(_ pid: pid_t) -> [AXUIElement] {
+        var token = Data(count: 20)
+        token.replaceSubrange(0..<4, with: withUnsafeBytes(of: pid) { Data($0) })
+        token.replaceSubrange(4..<8, with: withUnsafeBytes(of: Int32(0)) { Data($0) })
+        token.replaceSubrange(8..<12, with: withUnsafeBytes(of: Int32(0x636f636f)) { Data($0) })
+
+        var axWindows = [AXUIElement]()
+        let deadline = ProcessInfo.processInfo.systemUptime + 0.1  // 100 ms cap
+        for axId: AXUIElementID in 0..<1000 {
+            token.replaceSubrange(12..<20, with: withUnsafeBytes(of: axId) { Data($0) })
+            if let element = _AXUIElementCreateWithRemoteToken(token as CFData)?.takeRetainedValue() {
+                var subroleRef: CFTypeRef?
+                if AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subroleRef) == .success,
+                   let subrole = subroleRef as? String,
+                   subrole == (kAXStandardWindowSubrole as String) || subrole == (kAXDialogSubrole as String) {
+                    axWindows.append(element)
                 }
-                Logger.log("")
+            }
+            if ProcessInfo.processInfo.systemUptime > deadline { break }
+        }
+        return axWindows
+    }
+
+    /// Visible (current) Space ids across all displays.
+    private func visibleSpaceIDs() -> Set<CGSSpaceID> {
+        var visible = Set<CGSSpaceID>()
+        let displays = CGSCopyManagedDisplaySpaces(CGS_CONNECTION) as? [NSDictionary] ?? []
+        for display in displays {
+            if let current = display["Current Space"] as? NSDictionary,
+               let id = current["id64"] as? CGSSpaceID {
+                visible.insert(id)
             }
         }
-        
-                 Logger.log("📊 Statistics result:")
-         Logger.log("   Target application candidate windows: \(candidateWindows.count)")
-         Logger.log("   Valid windows: \(validWindows.count)")
-         Logger.log("   Final added windows: \(windows.count)")
-         Logger.log("=== Debug Information End ===\n")
-     }
-     
-     // MARK: - CT2 Functionality: Get Window Info for All Apps
-     private func getAllAppsWithWindows() {
-         apps.removeAll()
-         
-         Logger.log("\n=== CT2 Debug Information Start ===")
-         
-        let allApps = NSWorkspace.shared.runningApplications
-        Logger.log("Total running applications: \(allApps.count)")
-        let runningAppMap = Dictionary(uniqueKeysWithValues: allApps.map { ($0.processIdentifier, $0) })
-        var bundlePrimaryApp: [String: NSRunningApplication] = [:]
-         
-         let windowList = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
-         Logger.log("System found \(windowList.count) windows in total")
-         
-        var appWindows: [pid_t: [WindowInfo]] = [:]
-        var appInfoMap: [pid_t: (bundleId: String, appName: String)] = [:]
-        var appFirstWindowOrder: [pid_t: Int] = [:]
+        return visible
+    }
 
+    /// Window ids for the given Spaces, z-ordered (topmost first). includeInvisible
+    /// also returns minimized / off-screen windows.
+    private func windowsInSpaces(_ spaceIds: [CGSSpaceID], includeInvisible: Bool) -> [CGWindowID] {
+        var setTags = 0
+        var clearTags = 0
+        var options: CGSCopyWindowsOptions = [.screenSaverLevel1000]
+        if includeInvisible { options = [.screenSaverLevel1000, .invisible1, .invisible2] }
+        return CGSCopyWindowsWithOptionsAndTags(
+            CGS_CONNECTION, 0, spaceIds as CFArray, options.rawValue, &setTags, &clearTags
+        ) as? [CGWindowID] ?? []
+    }
+
+    /// The Space(s) a window belongs to.
+    private func spacesForWindow(_ wid: CGWindowID) -> [CGSSpaceID] {
+        return CGSCopySpacesForWindows(CGS_CONNECTION, CGSSpaceMask.all.rawValue,
+                                       [wid] as CFArray) as? [CGSSpaceID] ?? []
+    }
+
+    /// Keep real top-level windows. Accepts AXStandardWindow and AXDialog —
+    /// Safari (and some others) report minimized windows as AXDialog, so
+    /// excluding dialogs dropped every Dock window. Windows with no subrole are
+    /// kept too (some apps don't set one on their main window).
+    private func isStandardWindow(_ axWindow: AXUIElement) -> Bool {
+        var subroleRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(axWindow, kAXSubroleAttribute as CFString, &subroleRef) == .success,
+           let subrole = subroleRef as? String {
+            return subrole == (kAXStandardWindowSubrole as String) || subrole == (kAXDialogSubrole as String)
+        }
+        return true
+    }
+
+    private func windowTitle(_ axWindow: AXUIElement) -> String {
+        var titleRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(axWindow, kAXTitleAttribute as CFString, &titleRef) == .success,
+           let title = titleRef as? String {
+            return title
+        }
+        return ""
+    }
+     
+     // MARK: - CT2 Functionality: list all running apps (like native Command+Tab)
+     private func getAllAppsWithWindows() {
+        apps = runningRegularApps()
+        Logger.log("📊 CT2: listed \(apps.count) running apps")
+     }
+
+     /// Every regular (Dock-visible) running app except Lineup itself, ordered so
+     /// apps with a window on the current Space come first (front-to-back), then
+     /// the rest by name. Testable entry point for the CT2 app list.
+     func runningRegularApps() -> [AppInfo] {
+        let allApps = NSWorkspace.shared.runningApplications
+
+        // Order hint: apps with a window on the current Space first, by z-order.
+        let onscreen = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
+        var pidZOrder: [pid_t: Int] = [:]
+        for (i, info) in onscreen.enumerated() {
+            if let pid = info[kCGWindowOwnerPID as String] as? pid_t, pidZOrder[pid] == nil {
+                pidZOrder[pid] = i
+            }
+        }
+
+        var built: [(order: Int, name: String, app: AppInfo)] = []
         for app in allApps {
             guard app.activationPolicy == .regular,
                   app.bundleIdentifier != Bundle.main.bundleIdentifier,
                   let bundleId = app.bundleIdentifier else {
                 continue
             }
-
-            appInfoMap[app.processIdentifier] = (
+            let pid = app.processIdentifier
+            let name = app.localizedName ?? "App"
+            let info = AppInfo(
                 bundleId: bundleId,
-                appName: app.localizedName ?? "Unknown App"
+                processID: pid,
+                appName: name,
+                windowCount: axWindowCount(pid),
+                isActive: app.isActive
             )
-
-            if bundlePrimaryApp[bundleId] == nil {
-                bundlePrimaryApp[bundleId] = app
-            }
+            built.append((order: pidZOrder[pid] ?? Int.max, name: name, app: info))
         }
-         
-         Logger.log("Valid application count: \(appInfoMap.count)")
-         
-        var windowCounter = 1
-        var axWindowIndexByProcess: [pid_t: Int] = [:]
 
-        for (windowIndex, windowInfo) in windowList.enumerated() {
-            guard let processID = windowInfo[kCGWindowOwnerPID as String] as? pid_t else {
-                continue
-            }
-
-            let ownerName = windowInfo[kCGWindowOwnerName as String] as? String
-            guard let resolvedApp = resolvePrimaryApp(
-                for: processID,
-                ownerName: ownerName,
-                runningAppMap: runningAppMap,
-                bundlePrimaryApp: bundlePrimaryApp
-            ),
-            resolvedApp.bundleIdentifier != Bundle.main.bundleIdentifier,
-            let appInfo = appInfoMap[resolvedApp.processIdentifier] else {
-                continue
-            }
-
-            let windowTitle = windowInfo[kCGWindowName as String] as? String ?? ""
-            let layer = windowInfo[kCGWindowLayer as String] as? Int ?? -1
-            let windowID = windowInfo[kCGWindowNumber as String] as? CGWindowID ?? 0
-            let isOnScreen = windowInfo[kCGWindowIsOnscreen as String] as? Bool ?? false
-
-            let hasValidID = windowInfo[kCGWindowNumber as String] is CGWindowID
-            let hasValidLayer = isValidWindowLayer(layer, forBundleId: resolvedApp.bundleIdentifier)
-            let bounds = windowInfo[kCGWindowBounds as String] as? [String: Any]
-            let width = (bounds?["Width"] as? NSNumber)?.intValue ?? 0
-            let height = (bounds?["Height"] as? NSNumber)?.intValue ?? 0
-            let hasReasonableSize = width > 100 && height > 100
-
-            if hasValidID && hasValidLayer && hasReasonableSize && isOnScreen {
-                if isSteamApplication(appInfo.bundleId) {
-                    Logger.log("   🎮 CT2: Steam window detected: Layer \(layer), ID \(windowID) (Owner: \(ownerName ?? "Unknown"), PID: \(processID))")
-                }
-
-                if appFirstWindowOrder[resolvedApp.processIdentifier] == nil {
-                    appFirstWindowOrder[resolvedApp.processIdentifier] = windowIndex
-                }
-
-                let currentOwnerWindowCount = axWindowIndexByProcess[processID] ?? 0
-                axWindowIndexByProcess[processID] = currentOwnerWindowCount + 1
-
-                let (axTitle, _) = getAXWindowInfo(
-                    windowID: windowID,
-                    processID: processID,
-                    windowIndex: currentOwnerWindowCount
-                )
-
-                let displayTitle: String
-                let projectName: String
-
-                if !axTitle.isEmpty {
-                    displayTitle = axTitle
-                    projectName = settingsManager.extractProjectName(
-                        from: axTitle,
-                        bundleId: appInfo.bundleId,
-                        appName: appInfo.appName
-                    )
-                } else if !windowTitle.isEmpty {
-                    displayTitle = windowTitle
-                    projectName = settingsManager.extractProjectName(
-                        from: windowTitle,
-                        bundleId: appInfo.bundleId,
-                        appName: appInfo.appName
-                    )
-                } else {
-                    displayTitle = "\(appInfo.appName) window \(windowCounter)"
-                    projectName = displayTitle
-                    windowCounter += 1
-                }
-
-                let window = WindowInfo(
-                    windowID: windowID,
-                    title: displayTitle,
-                    projectName: projectName,
-                    appName: appInfo.appName,
-                    processID: processID,
-                    axWindowIndex: currentOwnerWindowCount
-                )
-
-                if appWindows[resolvedApp.processIdentifier] == nil {
-                    appWindows[resolvedApp.processIdentifier] = []
-                }
-                appWindows[resolvedApp.processIdentifier]?.append(window)
-            }
+        built.sort {
+            $0.order != $1.order
+                ? $0.order < $1.order
+                : $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
-         
-        for (processID, windows) in appWindows {
-            guard let appInfo = appInfoMap[processID], !windows.isEmpty else {
-                continue
-            }
+        return built.map { $0.app }
+     }
 
-            let runningApp = runningAppMap[processID]
-            let isActive = runningApp?.isActive ?? false
-
-            let app = AppInfo(
-                bundleId: appInfo.bundleId,
-                processID: processID,
-                appName: appInfo.appName,
-                windows: windows,
-                isActive: isActive,
-                lastUsedTime: nil
-            )
-
-            apps.append(app)
+     /// Best-effort count of an app's real windows (fast: one AX call, no
+     /// brute-force). Includes minimized windows; may undercount windows that
+     /// live only on another Space.
+     private func axWindowCount(_ pid: pid_t) -> Int {
+        let axApp = AXUIElementCreateApplication(pid)
+        var ref: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &ref) == .success,
+              let axWindows = ref as? [AXUIElement] else {
+            return 0
         }
-         
-         apps.sort { app1, app2 in
-             let order1 = appFirstWindowOrder[app1.processID] ?? Int.max
-             let order2 = appFirstWindowOrder[app2.processID] ?? Int.max
-             
-             if order1 != order2 {
-                 return order1 < order2
-             }
-             
-             return app1.appName.localizedCaseInsensitiveCompare(app2.appName) == .orderedAscending
-         }
-         
-         Logger.log("📊 CT2 Statistics result:")
-         Logger.log("   Valid application count: \(apps.count)")
-         for (index, app) in apps.enumerated() {
-             let activeStatus = app.isActive ? " [ACTIVE]" : ""
-             Logger.log("   \(index + 1). \(app.appName): \(app.windowCount) windows\(activeStatus)")
-         }
-         Logger.log("=== CT2 Debug Information End ===\n")
+        return axWindows.filter { isStandardWindow($0) }.count
      }
      
-     private func getAXWindowInfo(windowID: CGWindowID, processID: pid_t, windowIndex: Int) -> (title: String, axElement: AXUIElement?) {
+     private func getAXWindowInfo(windowID: CGWindowID, processID: pid_t, windowIndex: Int) -> (title: String, axElement: AXUIElement?, isMinimized: Bool) {
          let app = AXUIElementCreateApplication(processID)
-         
+
          var windowsRef: CFTypeRef?
          guard AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windowsRef) == .success,
                let axWindows = windowsRef as? [AXUIElement] else {
              Logger.log("   ❌ Cannot get AX window list")
-             return ("", nil)
+             return ("", nil, false)
          }
-         
+
          Logger.log("   🔍 Total AX windows: \(axWindows.count), target index: \(windowIndex)")
-         
+
          guard windowIndex < axWindows.count else {
              Logger.log("   ❌ Window index \(windowIndex) out of range (total: \(axWindows.count))")
-             return ("", nil)
+             return ("", nil, false)
          }
-         
+
          let axWindow = axWindows[windowIndex]
-         
+         let isMinimized = isWindowMinimized(axWindow)
+
          var titleRef: CFTypeRef?
          if AXUIElementCopyAttributeValue(axWindow, kAXTitleAttribute as CFString, &titleRef) == .success,
             let title = titleRef as? String {
-             Logger.log("   ✅ Window ID \(windowID) matched successfully through index[\(windowIndex)], title: '\(title)'")
-             return (title, axWindow)
+             Logger.log("   ✅ Window ID \(windowID) matched successfully through index[\(windowIndex)], title: '\(title)', minimized: \(isMinimized)")
+             return (title, axWindow, isMinimized)
          } else {
              Logger.log("   ⚠️ Window ID \(windowID) matched successfully through index[\(windowIndex)], but no title")
-             return ("", axWindow)
+             return ("", axWindow, isMinimized)
          }
+     }
+
+     /// Read the AX minimized (in-Dock) state of a window element.
+     private func isWindowMinimized(_ axWindow: AXUIElement) -> Bool {
+         var minimizedRef: CFTypeRef?
+         if AXUIElementCopyAttributeValue(axWindow, kAXMinimizedAttribute as CFString, &minimizedRef) == .success,
+            let minimized = minimizedRef as? Bool {
+             return minimized
+         }
+         return false
+     }
+
+     /// Restore a minimized window from the Dock via its AX element.
+     private func unminimizeWindow(_ axWindow: AXUIElement) {
+         AXUIElementSetAttributeValue(axWindow, kAXMinimizedAttribute as CFString, kCFBooleanFalse)
      }
     
     
@@ -1336,7 +1352,9 @@ class WindowManager: ObservableObject {
         globalEventMonitor = NSEvent.addGlobalMonitorForEvents(
             matching: [.flagsChanged, .keyDown, .keyUp]
         ) { [weak self] event in
-            self?.handleUnifiedKeyEvent(event, isGlobal: true)
+            // Global monitors are observe-only; the return value can't consume
+            // the event, so it is intentionally discarded.
+            _ = self?.handleUnifiedKeyEvent(event, isGlobal: true)
         }
         
         Logger.log("🔧 Unified event handling mechanism has been set up")
@@ -1582,15 +1600,16 @@ class WindowManager: ObservableObject {
             AppIconCache.shared.clearCache()
         }
         
-        if currentAppIndex < apps.count, let firstWindow = apps[currentAppIndex].firstWindow {
-            Logger.log("🎯 Preparing async application activation: \(apps[currentAppIndex].appName)")
-            
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                self?.activateWindowAsync(firstWindow)
-            }
+        if currentAppIndex < apps.count {
+            let target = apps[currentAppIndex]
+            Logger.log("🎯 Activating application: \(target.appName)")
+            // Activate the whole app — brings it to front and switches to the
+            // Space holding its windows (incl. minimized / other-desktop apps).
+            NSRunningApplication(processIdentifier: target.processID)?
+                .activate(options: [.activateAllWindows])
         }
-        
-        Logger.log("🚀 CT2 switcher UI hidden, application activation in progress asynchronously")
+
+        Logger.log("🚀 CT2 switcher UI hidden, application activated")
     }
     
     private func activateWindowAsync(_ window: WindowInfo) {
@@ -1613,25 +1632,65 @@ class WindowManager: ObservableObject {
     
     private func activateSpecificWindowFast(_ window: WindowInfo) {
         Logger.log("⚡ Fast activation of specific window: \(window.title)")
-        
+
+        // SkyLight path (DS2): the enumerator gives us the real window id + element.
+        // _SLPSSetFrontProcessWithOptions scoped to the window switches Spaces as a
+        // side-effect (there is no public Set-current-space API); makeKeyWindow +
+        // AXRaise then bring the exact window forward. Un-minimize first if needed.
+        if window.cgWindowID != 0 {
+            let axElement = window.axElement
+            if window.isMinimized, let el = axElement {
+                Logger.log("   📤 Restoring minimized window from the Dock")
+                unminimizeWindow(el)
+            }
+
+            var psn = ProcessSerialNumber()
+            GetProcessForPID(window.processID, &psn)
+            _SLPSSetFrontProcessWithOptions(&psn, window.cgWindowID, SLPSMode.userGenerated.rawValue)
+            makeKeyWindow(&psn, window.cgWindowID)
+            if let el = axElement {
+                AXUIElementPerformAction(el, kAXRaiseAction as CFString)
+            }
+            NSRunningApplication(processIdentifier: window.processID)?.activate()
+            Logger.log("   ✅ SkyLight activation completed (otherSpace=\(window.isOnOtherSpace), minimized=\(window.isMinimized))")
+            return
+        }
+
+        // Legacy AX path (CT2 firstWindow, or DS2 windows with no real id).
         if let axElement = getCachedAXElement(
             windowID: window.windowID,
-            processID: window.processID, 
+            processID: window.processID,
             windowIndex: window.axWindowIndex
         ) {
+            if window.isMinimized || isWindowMinimized(axElement) {
+                unminimizeWindow(axElement)
+            }
+            AXUIElementSetAttributeValue(axElement, kAXMainAttribute as CFString, kCFBooleanTrue)
             let raiseResult = AXUIElementPerformAction(axElement, kAXRaiseAction as CFString)
-            Logger.log("   ⚡ AX activation result: \(raiseResult == .success ? "successful" : "failed")")
-            
+            AXUIElementSetAttributeValue(axElement, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+            NSRunningApplication(processIdentifier: window.processID)?.activate()
             if raiseResult == .success {
-                AXUIElementSetAttributeValue(axElement, kAXMainAttribute as CFString, kCFBooleanTrue)
-                AXUIElementSetAttributeValue(axElement, kAXFocusedAttribute as CFString, kCFBooleanTrue)
-                Logger.log("   ✅ Window activation completed")
                 return
             }
         }
-        
+
         Logger.log("   ⚠️ AX method failed, using fallback solution")
         fallbackActivateAsync(window)
+    }
+
+    /// Make the given window the key window by posting a synthesized WindowServer
+    /// event pair. Ported from AltTab / Hammerspoon issue #370.
+    private func makeKeyWindow(_ psn: inout ProcessSerialNumber, _ windowId: CGWindowID) {
+        var wid = windowId
+        var bytes = [UInt8](repeating: 0, count: 0xf8)
+        bytes[0x04] = 0xf8
+        bytes[0x3a] = 0x10
+        memcpy(&bytes[0x3c], &wid, MemoryLayout<UInt32>.size)
+        memset(&bytes[0x20], 0xff, 0x10)
+        bytes[0x08] = 0x01
+        SLPSPostEventRecordTo(&psn, &bytes)
+        bytes[0x08] = 0x02
+        SLPSPostEventRecordTo(&psn, &bytes)
     }
     
     private func fallbackActivateAsync(_ window: WindowInfo) {
@@ -1741,87 +1800,7 @@ class WindowManager: ObservableObject {
     }
     
     // MARK: - Preview Support Methods
-    
-    func getWindowTitlesForBundleId(_ bundleId: String) -> [String] {
-        Logger.log("🔍 Getting window titles for bundle ID: \(bundleId)")
-        
-        var windowTitles: [String] = []
-        
-        let allApps = NSWorkspace.shared.runningApplications
-        
-        guard let targetApp = allApps.first(where: { $0.bundleIdentifier == bundleId }) else {
-            Logger.log("❌ No running application found with bundle ID: \(bundleId)")
-            return []
-        }
-        
-        Logger.log("✅ Found application: \(targetApp.localizedName ?? "Unknown") (PID: \(targetApp.processIdentifier))")
-        
-        let windowList = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
-        
-        for windowInfo in windowList {
-            guard let processID = windowInfo[kCGWindowOwnerPID as String] as? pid_t,
-                  processID == targetApp.processIdentifier,
-                  let isOnScreen = windowInfo[kCGWindowIsOnscreen as String] as? Bool,
-                  let layer = windowInfo[kCGWindowLayer as String] as? Int,
-                  let windowID = windowInfo[kCGWindowNumber as String] as? CGWindowID,
-                  let bounds = windowInfo[kCGWindowBounds as String] as? [String: Any],
-                  let width = bounds["Width"] as? CGFloat,
-                  let height = bounds["Height"] as? CGFloat else { continue }
-            
-            let hasValidID = windowID > 0
-            let hasValidLayer = isValidWindowLayer(layer, forBundleId: targetApp.bundleIdentifier)
-            let hasReasonableSize = width > 100 && height > 100
-            
-            if hasValidID && hasValidLayer && hasReasonableSize && isOnScreen {
-                // Log Steam application detection
-                if isSteamApplication(targetApp.bundleIdentifier) {
-                    Logger.log("   🎮 Steam window detected: Layer \(layer), ID \(windowID)")
-                }
-                
-                let cgTitle = windowInfo[kCGWindowName as String] as? String ?? ""
-                
-                let axTitle = getAXWindowTitleForSpecificWindow(windowID: windowID, processID: processID)
-                
-                let finalTitle: String
-                if !axTitle.isEmpty {
-                    finalTitle = axTitle
-                } else if !cgTitle.isEmpty {
-                    finalTitle = cgTitle
-                } else {
-                    finalTitle = "\(targetApp.localizedName ?? "App") window"
-                }
-                
-                if !finalTitle.isEmpty && !windowTitles.contains(finalTitle) {
-                    windowTitles.append(finalTitle)
-                    Logger.log("   ✅ Found window: '\(finalTitle)'")
-                }
-            }
-        }
-        
-        Logger.log("📋 Total window titles found: \(windowTitles.count)")
-        return windowTitles
-    }
-    
-    private func getAXWindowTitleForSpecificWindow(windowID: CGWindowID, processID: pid_t) -> String {
-        let app = AXUIElementCreateApplication(processID)
-        
-        var windowsRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windowsRef) == .success,
-              let axWindows = windowsRef as? [AXUIElement] else {
-            return ""
-        }
-        
-        for axWindow in axWindows {
-            var titleRef: CFTypeRef?
-            if AXUIElementCopyAttributeValue(axWindow, kAXTitleAttribute as CFString, &titleRef) == .success,
-               let title = titleRef as? String, !title.isEmpty {
-                return title
-            }
-        }
-        
-        return ""
-    }
-    
+
     func getWindowTitlesForPreview(_ bundleId: String) -> [String] {
         Logger.log("🔍 [Preview] Getting all window titles for bundle ID: \(bundleId)")
         
@@ -1883,7 +1862,7 @@ class WindowManager: ObservableObject {
             windowIndexByProcess[processID] = currentIndex + 1
 
             let cgTitle = windowInfo[kCGWindowName as String] as? String ?? ""
-            let (axTitle, _) = getAXWindowInfo(windowID: windowID, processID: processID, windowIndex: currentIndex)
+            let (axTitle, _, _) = getAXWindowInfo(windowID: windowID, processID: processID, windowIndex: currentIndex)
 
             let finalTitle: String
             if !axTitle.isEmpty {

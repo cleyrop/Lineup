@@ -7,91 +7,133 @@
 
 import SwiftUI
 
-struct PreferencesView: View {
-    @Environment(\.dismiss) private var dismiss
-    @StateObject private var settingsManager = SettingsManager.shared
-    @StateObject private var languageManager = LanguageManager.shared
-    @State private var selectedTab = 0
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Lineup")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    Text(LocalizedStrings.preferencesSubtitle)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-                
-                // Tab selector
-                HStack(spacing: 4) {
-                    TabButton(title: LocalizedStrings.generalSettingsTabTitle, isSelected: selectedTab == 0) {
-                        selectedTab = 0
-                    }
-                    
-                    TabButton(title: LocalizedStrings.advancedSettingsTabTitle, isSelected: selectedTab == 1) {
-                        selectedTab = 1
-                    }
-                    
-                    TabButton(title: LocalizedStrings.aboutTabTitle, isSelected: selectedTab == 2) {
-                        selectedTab = 2
-                    }
-                }
-                .padding(4)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
-            }
-            .padding(.horizontal, 24)
-            .padding(.top, 20)
-            .padding(.bottom, 16)
-            .background(.ultraThinMaterial)
-            
-            // Content area
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    if selectedTab == 0 {
-                        GeneralSettingsView()
-                    } else if selectedTab == 1 {
-                        AdvancedSettingsView()
-                    } else {
-                        AboutView()
-                    }
-                }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 20)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+// MARK: - Preferences Sections
+
+enum PrefSection: String, CaseIterable, Identifiable {
+    case general, shortcuts, switcher, appearance, windowTitles, about
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .general: return LocalizedStrings.generalSettingsTabTitle
+        case .shortcuts: return LocalizedStrings.hotkeySettings
+        case .switcher: return LocalizedStrings.switcherDisplaySectionTitle
+        case .appearance: return LocalizedStrings.colorSchemeLabel
+        case .windowTitles: return LocalizedStrings.windowTitleSectionTitle
+        case .about: return LocalizedStrings.aboutTabTitle
         }
-        .frame(width: 800, height: 600)
-        .background(Color(NSColor.windowBackgroundColor))
-        .onReceive(NotificationCenter.default.publisher(for: .languageChanged)) { _ in
-            // Force refresh view when language changes
-            // SwiftUI will automatically recalculate LocalizedStrings values
+    }
+
+    var icon: String {
+        switch self {
+        case .general: return "gearshape"
+        case .shortcuts: return "keyboard"
+        case .switcher: return "macwindow.on.rectangle"
+        case .appearance: return "paintpalette"
+        case .windowTitles: return "textformat"
+        case .about: return "info.circle"
         }
     }
 }
 
-struct TabButton: View {
-    let title: String
+struct SidebarRow: View {
+    let section: PrefSection
     let isSelected: Bool
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(isSelected ? .white : .primary)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(isSelected ? Color.accentColor : Color.clear)
-                )
+            HStack(spacing: 9) {
+                Image(systemName: section.icon)
+                    .font(.system(size: 13))
+                    .frame(width: 18)
+                    .foregroundColor(isSelected ? .white : .accentColor)
+                Text(section.title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(isSelected ? .white : .primary)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(isSelected ? Color.accentColor : Color.clear)
+            )
+            .contentShape(Rectangle())
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
+    }
+}
+
+struct PreferencesView: View {
+    @State private var selection: PrefSection = .general
+
+    var body: some View {
+        HStack(spacing: 0) {
+            sidebar
+            Divider()
+            detailColumn
+        }
+        .frame(width: 800, height: 600)
+        .onReceive(NotificationCenter.default.publisher(for: .languageChanged)) { _ in }
+    }
+
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 9) {
+                Image(systemName: "rectangle.2.swap")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.accentColor)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Lineup").font(.headline)
+                    Text(LocalizedStrings.preferencesSubtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 18)
+            .padding(.bottom, 14)
+
+            VStack(spacing: 2) {
+                ForEach(PrefSection.allCases) { section in
+                    SidebarRow(section: section, isSelected: selection == section) {
+                        selection = section
+                    }
+                }
+            }
+            .padding(.horizontal, 8)
+
+            Spacer()
+        }
+        .frame(width: 198)
+        .background(.regularMaterial)
+    }
+
+    private var detailColumn: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text(selection.title)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                detail
+            }
+            .padding(28)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background(Color(NSColor.windowBackgroundColor))
+    }
+
+    @ViewBuilder private var detail: some View {
+        switch selection {
+        case .general: GeneralPaneView()
+        case .shortcuts: ShortcutsPaneView()
+        case .switcher: SwitcherPaneView()
+        case .appearance: AppearancePaneView()
+        case .windowTitles: WindowTitleConfigView()
+        case .about: AboutView()
+        }
     }
 }
 
@@ -100,48 +142,17 @@ struct GeneralSettingsSection: View {
     @ObservedObject var settingsManager: SettingsManager
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text(LocalizedStrings.generalSettingsSectionTitle)
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                
-                Spacer()
+        SettingsSection(title: LocalizedStrings.generalSettingsSectionTitle) {
+            SettingsRow(title: LocalizedStrings.launchAtStartup,
+                        subtitle: LocalizedStrings.launchAtStartupDescription) {
+                Toggle("", isOn: Binding(
+                    get: { settingsManager.settings.launchAtStartup },
+                    set: { settingsManager.updateLaunchAtStartup($0) }
+                ))
+                .toggleStyle(.switch)
+                .labelsHidden()
             }
-            
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(LocalizedStrings.launchAtStartup)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundColor(.primary)
-                        
-                        Text(LocalizedStrings.launchAtStartupDescription)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    Toggle("", isOn: Binding(
-                        get: { settingsManager.settings.launchAtStartup },
-                        set: { newValue in
-                            settingsManager.updateLaunchAtStartup(newValue)
-                        }
-                    ))
-                    .toggleStyle(SwitchToggleStyle(tint: .accentColor))
-                }
-            }
-            .padding(20)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
         }
-        .padding(20)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.gray.opacity(0.1), lineWidth: 1)
-        )
     }
 }
 
@@ -150,47 +161,29 @@ struct LanguageSettingsSection: View {
     @ObservedObject var languageManager: LanguageManager
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text(LocalizedStrings.languageSectionTitle)
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                
-                Spacer()
-                
-                Picker(LocalizedStrings.language, selection: $languageManager.currentLanguage) {
+        SettingsSection(title: LocalizedStrings.languageSectionTitle,
+                        footer: LocalizedStrings.languageRestartNote) {
+            SettingsRow(title: LocalizedStrings.languageSelectionLabel) {
+                Picker("", selection: $languageManager.currentLanguage) {
                     ForEach(AppLanguage.allCases, id: \.self) { language in
                         Text(language.displayName).tag(language)
                     }
                 }
-                .pickerStyle(MenuPickerStyle())
-                .frame(width: 150)
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .frame(width: 160)
                 .onChange(of: languageManager.currentLanguage) { newLanguage in
                     languageManager.setLanguage(newLanguage)
                 }
             }
-            
-            HStack {
-                Text(LocalizedStrings.languageRestartNote)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                Spacer()
-                
+            RowDivider()
+            SettingsRow(title: LocalizedStrings.languageRestartNowButton) {
                 Button(LocalizedStrings.languageRestartNowButton) {
                     restartApplication()
                 }
-                .buttonStyle(.borderedProminent)
                 .controlSize(.small)
             }
-            .padding(.horizontal, 32)
         }
-        .padding(20)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.accentColor.opacity(0.1), lineWidth: 1)
-        )
     }
     
     // MARK: - Private Methods
@@ -243,91 +236,58 @@ struct DS2HotkeySettingsSection: View {
     let onReset: () -> Void
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text(LocalizedStrings.ds2HotkeySectionTitle)
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                
-                Spacer()
-                
-                HStack(spacing: 8) {
-                    Button(LocalizedStrings.hotkeyApply) {
-                        onApply()
-                    }
+        SettingsSection(title: LocalizedStrings.ds2HotkeySectionTitle) {
+            SettingsStackedRow(title: LocalizedStrings.ds2SameAppWindowSwitching,
+                               subtitle: LocalizedStrings.ds2HotkeyDescription) {
+                HotkeyEditor(modifier: $selectedModifier, trigger: $selectedTrigger,
+                             onApply: onApply, onReset: onReset)
+            }
+        }
+    }
+}
+
+// MARK: - Reusable Hotkey Editor
+struct HotkeyEditor: View {
+    @Binding var modifier: ModifierKey
+    @Binding var trigger: TriggerKey
+    let onApply: () -> Void
+    let onReset: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Picker("", selection: $modifier) {
+                    ForEach(ModifierKey.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                }
+                .labelsHidden()
+                .frame(width: 130)
+
+                Text("+").foregroundStyle(.secondary)
+
+                Picker("", selection: $trigger) {
+                    ForEach(TriggerKey.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                }
+                .labelsHidden()
+                .frame(width: 130)
+
+                Spacer(minLength: 8)
+
+                Button(LocalizedStrings.hotkeyApply, action: onApply)
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
-                    
-                    Button(LocalizedStrings.hotkeyReset) {
-                        onReset()
-                    }
-                    .buttonStyle(.bordered)
+                Button(LocalizedStrings.hotkeyReset, action: onReset)
                     .controlSize(.small)
-                }
             }
-            
-            VStack(alignment: .leading, spacing: 12) {
-                Text(LocalizedStrings.ds2HotkeyDescription)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                
-                HStack(spacing: 16) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(LocalizedStrings.modifierKeyLabel)
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundColor(.secondary)
-                        
-                        Picker(LocalizedStrings.modifierKey, selection: $selectedModifier) {
-                            ForEach(ModifierKey.allCases, id: \.self) { key in
-                                Text(key.displayName).tag(key)
-                            }
-                        }
-                        .pickerStyle(MenuPickerStyle())
-                        .frame(maxWidth: .infinity)
-                    }
-                    
-                    Text("+")
-                        .font(.title2)
-                        .foregroundColor(.secondary)
-                        .padding(.top, 16)
-                    
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(LocalizedStrings.triggerKeyLabel)
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundColor(.secondary)
-                        
-                        Picker(LocalizedStrings.triggerKey, selection: $selectedTrigger) {
-                            ForEach(TriggerKey.allCases, id: \.self) { key in
-                                Text(key.displayName).tag(key)
-                            }
-                        }
-                        .pickerStyle(MenuPickerStyle())
-                        .frame(maxWidth: .infinity)
-                    }
-                }
-                
-                HStack {
-                    Image(systemName: "keyboard")
-                        .font(.caption)
-                        .foregroundColor(.accentColor)
-                    Text(LocalizedStrings.currentHotkeyDisplay(selectedModifier.displayName, selectedTrigger.displayName))
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.accentColor)
-                }
-                .padding(.top, 4)
+
+            HStack(spacing: 6) {
+                Image(systemName: "keyboard")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(LocalizedStrings.currentHotkeyDisplay(modifier.displayName, trigger.displayName))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .padding(20)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
         }
-        .padding(20)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.blue.opacity(0.1), lineWidth: 1)
-        )
     }
 }
 
@@ -341,128 +301,51 @@ struct CT2HotkeySettingsSection: View {
     let settingsManager: SettingsManager
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text(LocalizedStrings.ct2HotkeySectionTitle)
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                
-                Spacer()
-                
-                Toggle(LocalizedStrings.ct2EnableToggle, isOn: $ct2Enabled)
-                    .toggleStyle(SwitchToggleStyle(tint: .green))
+        SettingsSection(title: LocalizedStrings.ct2HotkeySectionTitle) {
+            SettingsRow(title: LocalizedStrings.ct2AppSwitcher,
+                        subtitle: LocalizedStrings.ct2HotkeyDescription) {
+                Toggle("", isOn: $ct2Enabled)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
                     .onChange(of: ct2Enabled) { newValue in
                         settingsManager.updateCT2Enabled(newValue)
                         NotificationCenter.default.post(name: .hotkeySettingsChanged, object: nil)
                     }
             }
-            
             if ct2Enabled {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(LocalizedStrings.ct2HotkeyDescription)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    
-                    HStack {
-                        HStack(spacing: 16) {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(LocalizedStrings.modifierKeyLabel)
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.secondary)
-                                
-                                Picker("CT2" + LocalizedStrings.modifierKey, selection: $selectedModifier) {
-                                    ForEach(ModifierKey.allCases, id: \.self) { key in
-                                        Text(key.displayName).tag(key)
-                                    }
-                                }
-                                .pickerStyle(MenuPickerStyle())
-                                .frame(maxWidth: .infinity)
-                            }
-                            
-                            Text("+")
-                                .font(.title2)
-                                .foregroundColor(.secondary)
-                                .padding(.top, 16)
-                            
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(LocalizedStrings.triggerKeyLabel)
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.secondary)
-                                
-                                Picker("CT2" + LocalizedStrings.triggerKey, selection: $selectedTrigger) {
-                                    ForEach(TriggerKey.allCases, id: \.self) { key in
-                                        Text(key.displayName).tag(key)
-                                    }
-                                }
-                                .pickerStyle(MenuPickerStyle())
-                                .frame(maxWidth: .infinity)
-                            }
-                        }
-                        
-                        Spacer()
-                        
-                        VStack(spacing: 8) {
-                            Button(LocalizedStrings.hotkeyApply) {
-                                onApply()
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.small)
-                            
-                            Button(LocalizedStrings.hotkeyReset) {
-                                onReset()
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                        }
-                    }
-                    
-                    HStack {
-                        Image(systemName: "keyboard")
-                            .font(.caption)
-                            .foregroundColor(.green)
-                        Text(LocalizedStrings.currentHotkeyDisplay(selectedModifier.displayName, selectedTrigger.displayName))
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundColor(.green)
-                    }
-                    .padding(.top, 4)
+                RowDivider()
+                SettingsStackedRow(title: LocalizedStrings.currentCT2Hotkey) {
+                    HotkeyEditor(modifier: $selectedModifier, trigger: $selectedTrigger,
+                                 onApply: onApply, onReset: onReset)
                 }
-                .padding(20)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-            } else {
-                Text(LocalizedStrings.ct2DisabledMessage)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .italic()
-                    .padding(20)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
         }
-        .padding(20)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.green.opacity(0.1), lineWidth: 1)
-        )
     }
 }
 
-// MARK: - General Settings View
-struct GeneralSettingsView: View {
+// MARK: - General Pane
+struct GeneralPaneView: View {
     @StateObject private var settingsManager = SettingsManager.shared
     @StateObject private var languageManager = LanguageManager.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            GeneralSettingsSection(settingsManager: settingsManager)
+            LanguageSettingsSection(languageManager: languageManager)
+        }
+    }
+}
+
+// MARK: - Shortcuts Pane
+struct ShortcutsPaneView: View {
+    @StateObject private var settingsManager = SettingsManager.shared
     @State private var selectedModifier: ModifierKey
     @State private var selectedTrigger: TriggerKey
-    @State private var showingHotkeyWarning = false
-    
-    // CT2 settings state
+
     @State private var ct2Enabled: Bool
     @State private var selectedCT2Modifier: ModifierKey
     @State private var selectedCT2Trigger: TriggerKey
-    
+
     init() {
         let settings = SettingsManager.shared.settings
         _selectedModifier = State(initialValue: settings.modifierKey)
@@ -471,20 +354,16 @@ struct GeneralSettingsView: View {
         _selectedCT2Modifier = State(initialValue: settings.ct2ModifierKey)
         _selectedCT2Trigger = State(initialValue: settings.ct2TriggerKey)
     }
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 32) {
-            LanguageSettingsSection(languageManager: languageManager)
-            
-            GeneralSettingsSection(settingsManager: settingsManager)
-            
+        VStack(alignment: .leading, spacing: 24) {
             DS2HotkeySettingsSection(
                 selectedModifier: $selectedModifier,
                 selectedTrigger: $selectedTrigger,
                 onApply: applyDS2HotkeySettings,
                 onReset: resetDS2HotkeySettings
             )
-            
+
             CT2HotkeySettingsSection(
                 ct2Enabled: $ct2Enabled,
                 selectedModifier: $selectedCT2Modifier,
@@ -494,34 +373,25 @@ struct GeneralSettingsView: View {
                 settingsManager: settingsManager
             )
         }
-        .alert(LocalizedStrings.hotkeyConflictTitle, isPresented: $showingHotkeyWarning) {
-            Button(LocalizedStrings.confirm, role: .cancel) { }
-        } message: {
-            Text(LocalizedStrings.hotkeyConflictMessage)
-        }
     }
-    
-    // DS2 hotkey setting methods
+
     private func applyDS2HotkeySettings() {
         settingsManager.updateHotkey(modifier: selectedModifier, trigger: selectedTrigger)
-        // Notify system to re-register hotkeys
         NotificationCenter.default.post(name: .hotkeySettingsChanged, object: nil)
     }
-    
+
     private func resetDS2HotkeySettings() {
         selectedModifier = .command
         selectedTrigger = .grave
         applyDS2HotkeySettings()
     }
-    
-    // CT2 hotkey setting methods
+
     private func applyCT2HotkeySettings() {
         settingsManager.updateCT2Enabled(ct2Enabled)
         settingsManager.updateCT2Hotkey(modifier: selectedCT2Modifier, trigger: selectedCT2Trigger)
-        // Notify system to re-register hotkeys
         NotificationCenter.default.post(name: .hotkeySettingsChanged, object: nil)
     }
-    
+
     private func resetCT2HotkeySettings() {
         ct2Enabled = true
         selectedCT2Modifier = .command
@@ -530,100 +400,6 @@ struct GeneralSettingsView: View {
     }
 }
 
-// MARK: - Advanced Settings View
-struct AdvancedSettingsView: View {
-    @State private var expandedSections: Set<String> = []
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            CollapsibleSection(
-                id: "switcher_display_settings",
-                title: LocalizedStrings.switcherDisplaySectionTitle,
-                isExpanded: expandedSections.contains("switcher_display_settings")
-            ) {
-                SwitcherDisplaySettingsView()
-            } onToggle: { isExpanded in
-                if isExpanded {
-                    expandedSections.insert("switcher_display_settings")
-                } else {
-                    expandedSections.remove("switcher_display_settings")
-                }
-            }
-            
-            CollapsibleSection(
-                id: "window_title_config",
-                title: LocalizedStrings.windowTitleSectionTitle,
-                isExpanded: expandedSections.contains("window_title_config")
-            ) {
-                WindowTitleConfigView()
-            } onToggle: { isExpanded in
-                if isExpanded {
-                    expandedSections.insert("window_title_config")
-                } else {
-                    expandedSections.remove("window_title_config")
-                }
-            }
-        }
-        .onAppear {
-            expandedSections.insert("switcher_display_settings")
-        }
-    }
-}
-
-// MARK: - Collapsible Section Component
-struct CollapsibleSection<Content: View>: View {
-    let id: String
-    let title: String
-    let isExpanded: Bool
-    let content: () -> Content
-    let onToggle: (Bool) -> Void
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header with toggle button
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    onToggle(!isExpanded)
-                }
-            }) {
-                HStack {
-                    Text(title)
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                    
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .rotationEffect(.degrees(isExpanded ? 0 : 0))
-                        .animation(.easeInOut(duration: 0.2), value: isExpanded)
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
-                )
-            }
-            .buttonStyle(PlainButtonStyle())
-            
-            // Content area with animation
-            if isExpanded {
-                VStack(spacing: 0) {
-                    content()
-                }
-                .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .scale(scale: 0.95, anchor: .top)),
-                    removal: .opacity.combined(with: .scale(scale: 0.95, anchor: .top))
-                ))
-                .padding(.top, 16)
-            }
-        }
-    }
-}
 
 // MARK: - Window Title Header View
 struct WindowTitleHeaderView: View {
@@ -1430,213 +1206,111 @@ struct AddAppConfigView: View {
     }
 }
 
-// MARK: - About View
+// MARK: - About Pane
+
+private struct AboutFeature: Identifiable {
+    let id = UUID()
+    let icon: String
+    let title: String
+    let detail: String
+}
+
 struct AboutView: View {
+    private var features: [AboutFeature] {
+        [
+            AboutFeature(icon: "rectangle.on.rectangle",
+                         title: LocalizedStrings.feature1Title, detail: LocalizedStrings.feature1Detail),
+            AboutFeature(icon: "square.grid.3x3.topleft.filled",
+                         title: LocalizedStrings.feature2Title, detail: LocalizedStrings.feature2Detail),
+            AboutFeature(icon: "macwindow.on.rectangle",
+                         title: LocalizedStrings.feature3Title, detail: LocalizedStrings.feature3Detail),
+            AboutFeature(icon: "dock.rectangle",
+                         title: LocalizedStrings.feature4Title, detail: LocalizedStrings.feature4Detail),
+            AboutFeature(icon: "keyboard",
+                         title: LocalizedStrings.feature5Title, detail: LocalizedStrings.feature5Detail),
+            AboutFeature(icon: "textformat",
+                         title: LocalizedStrings.feature6Title, detail: LocalizedStrings.feature6Detail),
+        ]
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
+        VStack(alignment: .leading, spacing: 24) {
+            // Identity
+            HStack(spacing: 14) {
                 AppMainIconView()
-                    .frame(width: 48, height: 48)
-                
-                VStack(alignment: .leading, spacing: 4) {
+                    .frame(width: 56, height: 56)
+                VStack(alignment: .leading, spacing: 3) {
                     Text("Lineup")
-                        .font(.title)
-                        .fontWeight(.bold)
-                    
+                        .font(.title2).fontWeight(.bold)
                     Text(LocalizedStrings.version)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(.subheadline).foregroundStyle(.secondary)
+                    Text(LocalizedStrings.appDescription)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 2)
                 }
-                
-                Spacer()
+                Spacer(minLength: 0)
             }
-            
-            Divider()
-                .padding(.vertical, 8)
-            
-            HStack(spacing: 16) {
-                Button(action: {
-                    if let url = URL(string: "https://rivermao.com/dev/devswitcher2") {
-                        NSWorkspace.shared.open(url)
+
+            // Features
+            SettingsSection(title: LocalizedStrings.mainFeatures) {
+                ForEach(Array(features.enumerated()), id: \.element.id) { index, feature in
+                    if index > 0 { RowDivider() }
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: feature.icon)
+                            .font(.system(size: 15))
+                            .foregroundColor(.accentColor)
+                            .frame(width: 24, height: 22)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(feature.title)
+                                .font(.system(size: 13, weight: .medium))
+                            Text(feature.detail)
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer(minLength: 0)
                     }
-                }) {
-                    VStack(spacing: 6) {
-                        Image(systemName: "globe")
-                            .font(.system(size: 20, weight: .medium))
-                            .foregroundColor(.white)
-                            .frame(width: 32, height: 32)
-                            .background(
-                                Circle()
-                                    .fill(LinearGradient(
-                                        colors: [Color.green.opacity(0.8), Color.teal.opacity(0.8)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ))
-                            )
-                        
-                        Text(LocalizedStrings.openWebsite)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.primary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .padding(.horizontal, 12)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(LinearGradient(
-                                colors: [Color.green.opacity(0.3), Color.teal.opacity(0.3)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ), lineWidth: 1)
-                    )
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 11)
                 }
-                .buttonStyle(.plain)
-                .help(LocalizedStrings.website)
-                .scaleEffect(1.0)
-                .onHover { isHovered in
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                    }
-                }
-                
-                Button(action: {
+            }
+
+            // Project link
+            SettingsSection(title: LocalizedStrings.developmentInfo) {
+                Button {
                     if let url = URL(string: "https://github.com/cleyrop/Lineup") {
                         NSWorkspace.shared.open(url)
                     }
-                }) {
-                    VStack(spacing: 6) {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.white)
-                            .frame(width: 30, height: 30)
-                            .background(
-                                Circle()
-                                    .fill(LinearGradient(
-                                        colors: [Color.blue.opacity(0.8), Color.purple.opacity(0.8)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ))
-                            )
-                        
-                        Text(LocalizedStrings.openGitHub)
-                            .font(.system(size: 12, weight: .medium))
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "chevron.left.forwardslash.chevron.right")
+                            .font(.system(size: 14))
+                            .foregroundColor(.accentColor)
+                            .frame(width: 24)
+                        Text(LocalizedStrings.gitHub)
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundColor(.primary)
+                        Spacer(minLength: 8)
+                        Text("cleyrop/Lineup")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .padding(.horizontal, 12)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(LinearGradient(
-                                colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ), lineWidth: 1)
-                    )
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 11)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .help(LocalizedStrings.gitHub)
-                
-                Button(action: {
-                    if let url = URL(string: "https://rivermao.com/about/") {
-                        NSWorkspace.shared.open(url)
-                    }
-                }) {
-                    VStack(spacing: 6) {
-                        Image(systemName: "cup.and.saucer")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.white)
-                            .frame(width: 30, height: 30)
-                            .background(
-                                Circle()
-                                    .fill(LinearGradient(
-                                        colors: [Color.orange.opacity(0.8), Color.yellow.opacity(0.8)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ))
-                            )
-                        
-                        Text(LocalizedStrings.buyMeCoffee)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.primary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .padding(.horizontal, 12)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(LinearGradient(
-                                colors: [Color.orange.opacity(0.3), Color.yellow.opacity(0.3)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ), lineWidth: 1)
-                    )
-                }
-                .buttonStyle(.plain)
-                .help(LocalizedStrings.supportDevelopment)
             }
-            
-            Divider()
-            
-            VStack(alignment: .leading, spacing: 12) {
-                Text(LocalizedStrings.aboutApp)
-                    .font(.headline)
-                
-                Text(LocalizedStrings.appDescription)
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                
-                Text(LocalizedStrings.mainFeatures)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .padding(.top, 8)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(LocalizedStrings.feature1)
-                    Text(LocalizedStrings.feature2)
-                    Text(LocalizedStrings.feature3)
-                    Text(LocalizedStrings.feature4)
-                    Text(LocalizedStrings.feature5)
-                    Text(LocalizedStrings.feature6)
-                }
-                .font(.body)
-                .foregroundColor(.secondary)
-            }
-            
-            Divider()
-            
-            // Support Development Section
-            VStack(alignment: .leading, spacing: 12) {
-                Text(LocalizedStrings.supportDevelopment)
-                    .font(.headline)
-                
-                Text(LocalizedStrings.coffeeDescription)
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            
-            Divider()
-            
-            VStack(alignment: .leading, spacing: 8) {
-                Text(LocalizedStrings.developmentInfo)
-                    .font(.headline)
-                
-                Text(LocalizedStrings.author)
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                
-                Text(LocalizedStrings.copyright)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
+
+            Text(LocalizedStrings.copyright)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
-        .padding()
     }
 }
 
@@ -1668,175 +1342,80 @@ struct AppMainIconView: View {
     }
 }
 
-// MARK: - Switcher Display Settings View
-struct SwitcherDisplaySettingsView: View {
+// MARK: - Switcher Pane
+struct SwitcherPaneView: View {
     @StateObject private var settingsManager = SettingsManager.shared
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 20) {
-                // Show Number Keys Setting
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(LocalizedStrings.showNumberKeysLabel)
-                            .font(.headline)
-                            .fontWeight(.medium)
-                        
-                        Text(LocalizedStrings.showNumberKeysDescription)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
-                    
+        VStack(alignment: .leading, spacing: 24) {
+            SettingsSection(title: LocalizedStrings.switcherDisplaySectionTitle) {
+                SettingsRow(title: LocalizedStrings.showNumberKeysLabel,
+                            subtitle: LocalizedStrings.showNumberKeysDescription) {
                     Toggle("", isOn: Binding(
                         get: { settingsManager.settings.showNumberKeys },
-                        set: { newValue in
-                            settingsManager.updateShowNumberKeys(newValue)
-                        }
+                        set: { settingsManager.updateShowNumberKeys($0) }
                     ))
-                    .toggleStyle(SwitchToggleStyle())
+                    .toggleStyle(.switch)
+                    .labelsHidden()
                 }
-                
-                // Divider between settings
-                Divider()
-                    .padding(.horizontal, -20)
-                
-                // Follow Active Window Setting
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(LocalizedStrings.followActiveWindowLabel)
-                            .font(.headline)
-                            .fontWeight(.medium)
-                        
-                        Text(LocalizedStrings.followActiveWindowDescription)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
-                    
+                RowDivider()
+                SettingsRow(title: LocalizedStrings.followActiveWindowLabel,
+                            subtitle: LocalizedStrings.followActiveWindowDescription) {
                     Toggle("", isOn: Binding(
                         get: { settingsManager.settings.switcherFollowActiveWindow },
-                        set: { newValue in
-                            settingsManager.updateSwitcherFollowActiveWindow(newValue)
-                        }
+                        set: { settingsManager.updateSwitcherFollowActiveWindow($0) }
                     ))
-                    .toggleStyle(SwitchToggleStyle())
+                    .toggleStyle(.switch)
+                    .labelsHidden()
                 }
-
-                // Divider between settings
-                Divider()
-                    .padding(.horizontal, -20)
-
-                // Show Windows From All Spaces Setting
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(LocalizedStrings.showWindowsFromAllSpacesLabel)
-                            .font(.headline)
-                            .fontWeight(.medium)
-
-                        Text(LocalizedStrings.showWindowsFromAllSpacesDescription)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-
-                    Spacer()
-
+                RowDivider()
+                SettingsRow(title: LocalizedStrings.showWindowsFromAllSpacesLabel,
+                            subtitle: LocalizedStrings.showWindowsFromAllSpacesDescription) {
                     Toggle("", isOn: Binding(
                         get: { settingsManager.settings.showWindowsFromAllSpaces },
-                        set: { newValue in
-                            settingsManager.updateShowWindowsFromAllSpaces(newValue)
-                        }
+                        set: { settingsManager.updateShowWindowsFromAllSpaces($0) }
                     ))
-                    .toggleStyle(SwitchToggleStyle())
+                    .toggleStyle(.switch)
+                    .labelsHidden()
                 }
+            }
 
-                // Divider between settings
-                Divider()
-                    .padding(.horizontal, -20)
-
-                // Vertical Position Setting
-                VStack(alignment: .leading, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(LocalizedStrings.switcherVerticalPositionLabel)
-                            .font(.headline)
-                            .fontWeight(.medium)
-                        
-                        Text(LocalizedStrings.switcherVerticalPositionDescription)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    
+            SettingsSection(title: LocalizedStrings.switcherVerticalPositionLabel) {
+                SettingsStackedRow(title: LocalizedStrings.switcherVerticalPositionLabel,
+                                   subtitle: LocalizedStrings.switcherVerticalPositionDescription) {
                     VerticalPositionControl()
                 }
-                
-                // Divider between settings
-                Divider()
-                    .padding(.horizontal, -20)
-                
-                // Header Style Setting
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(LocalizedStrings.switcherHeaderStyleLabel)
-                            .font(.headline)
-                            .fontWeight(.medium)
-                        
-                        Text(LocalizedStrings.switcherHeaderStyleDescription)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
-                    
+                RowDivider()
+                SettingsRow(title: LocalizedStrings.switcherHeaderStyleLabel,
+                            subtitle: LocalizedStrings.switcherHeaderStyleDescription) {
                     Picker("", selection: Binding(
                         get: { settingsManager.settings.switcherHeaderStyle },
-                        set: { newValue in
-                            settingsManager.updateSwitcherHeaderStyle(newValue)
-                        }
+                        set: { settingsManager.updateSwitcherHeaderStyle($0) }
                     )) {
                         ForEach(SwitcherHeaderStyle.allCases, id: \.self) { style in
                             Text(style.displayName).tag(style)
                         }
                     }
-                    .pickerStyle(SegmentedPickerStyle())
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
                     .frame(width: 200)
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-                
-                Divider()
-                    .padding(.horizontal, -20)
-                
-                // Color Scheme Setting
-                VStack(alignment: .leading, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(LocalizedStrings.colorSchemeLabel)
-                            .font(.headline)
-                            .fontWeight(.medium)
-                        
-                        Text(LocalizedStrings.colorSchemeDescription)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    ColorSchemePickerView()
-                    
-                    // Preview section
-                    ColorSchemePreviewView()
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
             }
-            .padding(20)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.accentColor.opacity(0.1), lineWidth: 1)
-            )
         }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 20)
+    }
+}
+
+// MARK: - Appearance Pane
+struct AppearancePaneView: View {
+    var body: some View {
+        SettingsSection(title: LocalizedStrings.colorSchemeLabel) {
+            SettingsStackedRow(title: LocalizedStrings.colorSchemeLabel,
+                               subtitle: LocalizedStrings.colorSchemeDescription) {
+                ColorSchemePickerView()
+                ColorSchemePreviewView()
+                    .padding(.top, 4)
+            }
+        }
     }
 }
 
@@ -1910,95 +1489,16 @@ struct ColorSchemePickerView: View {
 }
 
 // MARK: - Color Scheme Preview View
+/// Live preview of how the chosen scheme tints the (list-only) switcher.
 struct ColorSchemePreviewView: View {
-    @StateObject private var settingsManager = SettingsManager.shared
-    
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(LocalizedStrings.colorSchemePreviewTitle)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundColor(.secondary)
-            
-            HStack {
-                // Circular layout preview
-                VStack(spacing: 8) {
-                    Text(LocalizedStrings.colorSchemeCircularPreview)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    CircularPreviewView()
-                        .frame(width: 120, height: 120)
-                }
-                
-                Spacer()
-                
-                // List layout preview
-                VStack(spacing: 8) {
-                    Text(LocalizedStrings.colorSchemeListPreview)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    ListPreviewView()
-                        .frame(width: 200, height: 80)
-                }
-            }
-        }
-        .padding(12)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
-    }
-}
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
-// MARK: - Circular Preview View
-struct CircularPreviewView: View {
-    @StateObject private var settingsManager = SettingsManager.shared
-    
-    var body: some View {
-        let colorScheme = settingsManager.settings.colorScheme
-        
-        ZStack {
-            // Background
-            Circle()
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    Circle()
-                        .fill(colorScheme.backgroundGradient)
-                        .opacity(0.2)
-                )
-            
-            // Outer ring sectors
-            ForEach(0..<6, id: \.self) { index in
-                let angle = Double(index) * 60.0
-                let isSelected = index == 0
-                
-                Path { path in
-                    let center = CGPoint(x: 60, y: 60)
-                    let outerRadius: CGFloat = 50
-                    let innerRadius: CGFloat = 30
-                    
-                    path.addArc(center: center, radius: outerRadius, startAngle: Angle(degrees: angle), endAngle: Angle(degrees: angle + 60), clockwise: false)
-                    path.addArc(center: center, radius: innerRadius, startAngle: Angle(degrees: angle + 60), endAngle: Angle(degrees: angle), clockwise: true)
-                    path.closeSubpath()
-                }
-                .fill(isSelected ? colorScheme.primaryColor.opacity(0.3) : colorScheme.secondaryColor.opacity(0.1))
-            }
-            
-            // Center area
-            Circle()
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    Circle()
-                        .fill(colorScheme.backgroundGradient)
-                        .opacity(0.3)
-                )
-                .overlay(
-                    Circle()
-                        .stroke(colorScheme.glowColor, lineWidth: 1)
-                        .blur(radius: 2)
-                        .opacity(0.6)
-                )
-                .frame(width: 50, height: 50)
-                .shadow(color: colorScheme.primaryColor.opacity(0.3), radius: 4, x: 0, y: 2)
+            ListPreviewView()
+                .frame(maxWidth: 320)
         }
     }
 }
@@ -2006,46 +1506,48 @@ struct CircularPreviewView: View {
 // MARK: - List Preview View
 struct ListPreviewView: View {
     @StateObject private var settingsManager = SettingsManager.shared
-    
+
     var body: some View {
         let colorScheme = settingsManager.settings.colorScheme
-        
-        VStack(spacing: 2) {
-            // Header
-            HStack {
-                Circle()
-                    .fill(colorScheme.primaryColor)
-                    .frame(width: 8, height: 8)
+
+        VStack(spacing: 3) {
+            // Selected row
+            HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(colorScheme.primaryColor.opacity(0.9))
+                    .frame(width: 14, height: 14)
                 Text(LocalizedStrings.colorSchemeSampleApp)
-                    .font(.caption2)
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.primary)
                 Spacer()
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(colorScheme.primaryColor)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
             .background(colorScheme.primaryColor.opacity(0.15))
-            .cornerRadius(4)
-            
-            // Item
-            HStack {
-                Circle()
-                    .fill(colorScheme.secondaryColor)
-                    .frame(width: 6, height: 6)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+
+            // Unselected row
+            HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(colorScheme.secondaryColor.opacity(0.7))
+                    .frame(width: 14, height: 14)
                 Text(LocalizedStrings.colorSchemeSampleWindow)
-                    .font(.caption2)
+                    .font(.system(size: 11))
                     .foregroundColor(.primary)
                 Spacer()
-                Circle()
-                    .fill(colorScheme.accentColor)
-                    .frame(width: 6, height: 6)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(colorScheme.primaryColor.opacity(0.05))
-            .cornerRadius(4)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
         }
-        .padding(4)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
+        .padding(8)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+        )
     }
 }
 
@@ -2057,34 +1559,21 @@ struct ColorSchemeCardView: View {
     
     var body: some View {
         Button(action: onSelect) {
-            VStack(spacing: 8) {
-                // Color preview circle with enhanced design
-                ZStack {
-                    // Background gradient
-                    Circle()
-                        .fill(scheme.backgroundGradient)
-                        .frame(width: 40, height: 40)
-                    
-                    // Primary color ring
-                    Circle()
-                        .stroke(scheme.primaryColor, lineWidth: 2)
-                        .frame(width: 40, height: 40)
-                        .opacity(0.8)
-                    
-                    // Secondary color accent
-                    Circle()
-                        .fill(scheme.secondaryColor)
-                        .frame(width: 20, height: 20)
-                        .opacity(0.6)
-                    
-                    // Accent color center
-                    Circle()
-                        .fill(scheme.accentColor)
-                        .frame(width: 12, height: 12)
-                        .opacity(0.9)
-                }
-                
-                // Scheme name
+            VStack(spacing: 7) {
+                // Clean rounded swatch: the scheme gradient with a primary-colour bar.
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(scheme.backgroundGradient)
+                    .frame(height: 40)
+                    .overlay(
+                        Capsule()
+                            .fill(scheme.primaryColor)
+                            .frame(width: 18, height: 6)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                    )
+
                 Text(scheme.displayName)
                     .font(.caption)
                     .fontWeight(.medium)
@@ -2092,19 +1581,122 @@ struct ColorSchemeCardView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            .padding(8)
+            .padding(6)
             .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? scheme.primaryColor.opacity(0.1) : Color.clear)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(isSelected ? scheme.primaryColor : Color.gray.opacity(0.2), lineWidth: isSelected ? 2 : 1)
-                    )
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
             )
         }
         .buttonStyle(PlainButtonStyle())
-        .scaleEffect(isSelected ? 1.05 : 1.0)
-        .animation(.easeInOut(duration: 0.2), value: isSelected)
+        .animation(.easeInOut(duration: 0.15), value: isSelected)
+    }
+}
+
+// MARK: - Settings Design System
+//
+// A small, consistent set of building blocks for the preferences UI, modelled on
+// macOS System Settings: an uppercase group caption above a single rounded card,
+// rows with a title + optional description on the left and a control on the right,
+// separated by inset hairlines.
+
+/// A titled group: caption + a rounded card wrapping its rows.
+struct SettingsSection<Content: View>: View {
+    var title: String? = nil
+    var footer: String? = nil
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let title {
+                Text(title.uppercased())
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 4)
+            }
+            VStack(spacing: 0) {
+                content()
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color(NSColor.controlBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+            )
+            if let footer {
+                Text(footer)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 4)
+                    .padding(.top, 2)
+            }
+        }
+    }
+}
+
+/// A single settings row: title + optional description, with a trailing control.
+struct SettingsRow<Trailing: View>: View {
+    let title: String
+    var subtitle: String? = nil
+    @ViewBuilder var trailing: () -> Trailing
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.primary)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer(minLength: 12)
+            trailing()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 11)
+    }
+}
+
+/// A row that stacks its control beneath the title (for sliders, grids, etc.).
+struct SettingsStackedRow<Content: View>: View {
+    let title: String
+    var subtitle: String? = nil
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.primary)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            content()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+}
+
+/// Inset hairline used between rows inside a SettingsSection.
+struct RowDivider: View {
+    var body: some View {
+        Divider().padding(.leading, 16)
     }
 }
 

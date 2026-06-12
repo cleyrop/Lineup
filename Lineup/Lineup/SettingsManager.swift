@@ -267,31 +267,6 @@ enum ColorScheme: String, CaseIterable, Codable {
         }
     }
     
-    var accentColor: Color {
-        switch self {
-        case .system:
-            return .accentColor
-        case .cyberpunk:
-            return Color(red: 0.0, green: 1.0, blue: 1.0)
-        case .sunset:
-            return Color(red: 1.0, green: 0.6, blue: 0.0)
-        case .forest:
-            return Color(red: 0.4, green: 1.0, blue: 0.6)
-        case .ocean:
-            return Color(red: 0.4, green: 0.8, blue: 1.0)
-        case .rose:
-            return Color(red: 1.0, green: 0.4, blue: 0.8)
-        case .graphite:
-            return Color(red: 0.8, green: 0.8, blue: 0.9)
-        case .indigo:
-            return Color(red: 0.6, green: 0.4, blue: 1.0)
-        case .aurora:
-            return Color(red: 0.2, green: 1.0, blue: 0.8)
-        case .midnight:
-            return Color(red: 0.8, green: 0.4, blue: 1.0)
-        }
-    }
-    
     var backgroundGradient: LinearGradient {
         switch self {
         case .system:
@@ -384,30 +359,6 @@ enum ColorScheme: String, CaseIterable, Codable {
         }
     }
     
-    var glowColor: Color {
-        switch self {
-        case .system:
-            return .accentColor.opacity(0.3)
-        case .cyberpunk:
-            return Color(red: 0.0, green: 1.0, blue: 0.8).opacity(0.4)
-        case .sunset:
-            return Color(red: 1.0, green: 0.4, blue: 0.2).opacity(0.4)
-        case .forest:
-            return Color(red: 0.2, green: 0.8, blue: 0.4).opacity(0.4)
-        case .ocean:
-            return Color(red: 0.2, green: 0.6, blue: 1.0).opacity(0.4)
-        case .rose:
-            return Color(red: 1.0, green: 0.2, blue: 0.6).opacity(0.4)
-        case .graphite:
-            return Color(red: 0.4, green: 0.4, blue: 0.5).opacity(0.4)
-        case .indigo:
-            return Color(red: 0.4, green: 0.2, blue: 0.8).opacity(0.4)
-        case .aurora:
-            return Color(red: 0.0, green: 0.8, blue: 0.6).opacity(0.4)
-        case .midnight:
-            return Color(red: 0.6, green: 0.2, blue: 0.8).opacity(0.4)
-        }
-    }
 }
 
 // MARK: - App Title Configuration

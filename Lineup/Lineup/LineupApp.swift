@@ -34,6 +34,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Diagnostic builds: make stdout unbuffered so logs flush live to a
+        // redirected file (Swift print() block-buffers to a non-tty otherwise).
+#if DEBUG
+        setvbuf(stdout, nil, _IONBF, 0)
+#endif
         // Create the status bar item
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         
