@@ -516,175 +516,6 @@ struct ShortcutsPaneView: View {
 }
 
 
-// MARK: - Window Title Header View
-struct WindowTitleHeaderView: View {
-    var body: some View {
-        HStack {
-            Text(LocalizedStrings.windowTitleSectionTitle)
-                .font(.title3)
-                .fontWeight(.semibold)
-            
-            Spacer()
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 20)
-    }
-}
-
-// MARK: - Window Title Settings Content View
-struct WindowTitleSettingsContentView: View {
-    @Binding var selectedDefaultStrategy: TitleExtractionStrategy
-    @Binding var defaultCustomSeparator: String
-    @ObservedObject var configManager: ConfigurationExportImportManager
-    @ObservedObject var settingsManager: SettingsManager
-    @Binding var showingAddAppDialog: Bool
-    let onImport: () -> Void
-    let onExport: () -> Void
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            DefaultStrategySection(
-                selectedDefaultStrategy: $selectedDefaultStrategy,
-                defaultCustomSeparator: $defaultCustomSeparator,
-                settingsManager: settingsManager
-            )
-            
-            AppConfigsSection(
-                configManager: configManager,
-                settingsManager: settingsManager,
-                showingAddAppDialog: $showingAddAppDialog,
-                onImport: onImport,
-                onExport: onExport
-            )
-        }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 20)
-    }
-}
-
-// MARK: - Default Strategy Section
-struct DefaultStrategySection: View {
-    @Binding var selectedDefaultStrategy: TitleExtractionStrategy
-    @Binding var defaultCustomSeparator: String
-    @ObservedObject var settingsManager: SettingsManager
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text(LocalizedStrings.defaultStrategyDescription)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
-                Spacer()
-                
-                Button(LocalizedStrings.defaultStrategyApply) {
-                    settingsManager.updateDefaultTitleStrategy(selectedDefaultStrategy, customSeparator: defaultCustomSeparator)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-            }
-            
-            HStack(spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(LocalizedStrings.extractionStrategyLabel)
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.secondary)
-                    
-                    Picker(LocalizedStrings.defaultExtractionStrategy, selection: $selectedDefaultStrategy) {
-                        ForEach(TitleExtractionStrategy.allCases, id: \.self) { strategy in
-                            Text(strategy.displayName).tag(strategy)
-                        }
-                    }
-                    .pickerStyle(MenuPickerStyle())
-                    .frame(maxWidth: .infinity)
-                }
-                
-                if selectedDefaultStrategy != .fullTitle {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(LocalizedStrings.customSeparatorLabel)
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundColor(.secondary)
-                        
-                        TextField(LocalizedStrings.separatorExample, text: $defaultCustomSeparator)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-            }
-        }
-        .padding(20)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-    }
-}
-
-// MARK: - App Configs Section
-struct AppConfigsSection: View {
-    @ObservedObject var configManager: ConfigurationExportImportManager
-    @ObservedObject var settingsManager: SettingsManager
-    @Binding var showingAddAppDialog: Bool
-    let onImport: () -> Void
-    let onExport: () -> Void
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text(LocalizedStrings.appConfigsDescription)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
-                Spacer()
-                
-                HStack(spacing: 8) {
-                    Button(LocalizedStrings.appConfigImport) {
-                        onImport()
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .disabled(configManager.isProcessing)
-                    
-                    Button(LocalizedStrings.appConfigExport) {
-                        onExport()
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .disabled(settingsManager.settings.appTitleConfigs.isEmpty || configManager.isProcessing)
-                    
-                    Button(LocalizedStrings.appConfigAdd) {
-                        showingAddAppDialog = true
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                }
-            }
-            
-            if settingsManager.settings.appTitleConfigs.isEmpty {
-                VStack {
-                    Image(systemName: "tray")
-                        .font(.title)
-                        .foregroundColor(.secondary)
-                    Text(LocalizedStrings.noAppConfigsMessage)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(30)
-            } else {
-                VStack(spacing: 8) {
-                    ForEach(Array(settingsManager.settings.appTitleConfigs.values), id: \.bundleId) { config in
-                        AppConfigRowView(config: config) {
-                            settingsManager.removeAppTitleConfig(for: config.bundleId)
-                        }
-                    }
-                }
-            }
-        }
-        .padding(20)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-    }
-}
-
 // MARK: - Window Title Configuration View
 struct WindowTitleConfigView: View {
     @StateObject private var settingsManager = SettingsManager.shared
@@ -708,24 +539,76 @@ struct WindowTitleConfigView: View {
         _defaultCustomSeparator = State(initialValue: settings.defaultCustomSeparator)
     }
     
+    private var appConfigs: [AppTitleConfig] {
+        Array(settingsManager.settings.appTitleConfigs.values).sorted { $0.appName < $1.appName }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            WindowTitleHeaderView()
-            WindowTitleSettingsContentView(
-                selectedDefaultStrategy: $selectedDefaultStrategy,
-                defaultCustomSeparator: $defaultCustomSeparator,
-                configManager: configManager,
-                settingsManager: settingsManager,
-                showingAddAppDialog: $showingAddAppDialog,
-                onImport: importConfiguration,
-                onExport: exportConfiguration
-            )
+        VStack(alignment: .leading, spacing: 24) {
+            Text(LocalizedStrings.windowTitleExplainer)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Default rule — applied immediately, no separate Apply button.
+            SettingsSection(title: LocalizedStrings.defaultStrategyDescription) {
+                SettingsRow(title: LocalizedStrings.extractionStrategyLabel) {
+                    Picker("", selection: $selectedDefaultStrategy) {
+                        ForEach(TitleExtractionStrategy.allCases, id: \.self) { strategy in
+                            Text(strategy.displayName).tag(strategy)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 220)
+                }
+                if selectedDefaultStrategy != .fullTitle {
+                    Divider().padding(.leading, 16)
+                    SettingsRow(title: LocalizedStrings.customSeparatorLabel) {
+                        TextField(LocalizedStrings.separatorExample, text: $defaultCustomSeparator)
+                            .frame(width: 220)
+                    }
+                }
+            }
+            .onChange(of: selectedDefaultStrategy) { _ in applyDefault() }
+            .onChange(of: defaultCustomSeparator) { _ in applyDefault() }
+
+            // Per-app overrides.
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text(LocalizedStrings.appConfigsTitle.uppercased())
+                        .font(.caption).fontWeight(.semibold).foregroundStyle(.secondary)
+                    Spacer()
+                    Button(LocalizedStrings.appConfigImport) { importConfiguration() }
+                        .controlSize(.small)
+                        .disabled(configManager.isProcessing)
+                    Button(LocalizedStrings.appConfigExport) { exportConfiguration() }
+                        .controlSize(.small)
+                        .disabled(appConfigs.isEmpty || configManager.isProcessing)
+                    Button(LocalizedStrings.appConfigAdd) { showingAddAppDialog = true }
+                        .buttonStyle(.borderedProminent).controlSize(.small)
+                }
+                .padding(.leading, 4)
+
+                SettingsSection {
+                    if appConfigs.isEmpty {
+                        HStack {
+                            Text(LocalizedStrings.noAppConfigsMessage)
+                                .font(.callout).foregroundStyle(.secondary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                    } else {
+                        ForEach(Array(appConfigs.enumerated()), id: \.element.bundleId) { index, config in
+                            if index > 0 { Divider().padding(.leading, 16) }
+                            AppConfigRowView(config: config) {
+                                settingsManager.removeAppTitleConfig(for: config.bundleId)
+                            }
+                        }
+                    }
+                }
+            }
         }
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.purple.opacity(0.1), lineWidth: 1)
-        )
         .sheet(isPresented: $showingAddAppDialog) {
             AddAppConfigView(
                 bundleId: $newAppBundleId,
@@ -756,6 +639,10 @@ struct WindowTitleConfigView: View {
     }
     
     
+    private func applyDefault() {
+        settingsManager.updateDefaultTitleStrategy(selectedDefaultStrategy, customSeparator: defaultCustomSeparator)
+    }
+
     private func exportConfiguration() {
         Task { @MainActor in
             switch configManager.saveConfigurationToFile() {
@@ -979,60 +866,28 @@ struct PreviewSectionView: View {
 struct AppConfigRowView: View {
     let config: AppTitleConfig
     let onDelete: () -> Void
-    
-    var body: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text(config.appName)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                    
-                    Text(config.strategy.displayName)
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 4))
-                }
-                
-                Text(config.bundleId)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                
-                if let separator = config.customSeparator, !separator.isEmpty, config.strategy != .fullTitle {
-                    HStack(spacing: 4) {
-                        Image(systemName: "scissors")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                        Text(LocalizedStrings.separatorLabel(separator))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-            
-            Button {
-                onDelete()
-            } label: {
-                Image(systemName: "trash")
-                    .font(.caption)
-                    .foregroundColor(.red)
-            }
-            .buttonStyle(.borderless)
-            .help(LocalizedStrings.deleteConfigTooltip)
+
+    private var subtitle: String {
+        if let separator = config.customSeparator, !separator.isEmpty, config.strategy != .fullTitle {
+            return "\(config.bundleId)  ·  \(LocalizedStrings.separatorLabel(separator))"
         }
-        .padding(16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-        )
+        return config.bundleId
+    }
+
+    var body: some View {
+        SettingsRow(title: config.appName, subtitle: subtitle) {
+            HStack(spacing: 12) {
+                Text(config.strategy.displayName)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help(LocalizedStrings.deleteConfigTooltip)
+            }
+        }
     }
 }
 

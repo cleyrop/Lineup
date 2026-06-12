@@ -103,6 +103,9 @@ struct LocalizedStrings {
         return "launch_at_startup_error".localized(with: reason)
     }
 
+    static let windowTitleExplainer = "window_title_explainer".localized
+    static let appConfigsTitle = "app_configs_title".localized
+
     // MARK: - Permissions
     static let permissionsSectionTitle = "permissions_section_title".localized
     static let permissionAccessibility = "permission_accessibility".localized

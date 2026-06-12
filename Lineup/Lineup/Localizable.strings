@@ -151,8 +151,10 @@
 "strategy" = "Strategy";
 "delete" = "Delete";
 "window_title_section_title" = "Window Title Configuration";
+"window_title_explainer" = "Window titles are often noisy (e.g. “app.ts — MyProject — Editor”). Lineup trims them to a meaningful name. Set the default rule, and override it for specific apps below.";
 "default_strategy_description" = "Default Extraction Strategy";
 "app_configs_description" = "App-Specific Configuration";
+"app_configs_title" = "App overrides";
 "import_config_button" = "Import";
 "export_config_button" = "Export";
 "add_app_button" = "Add App";
