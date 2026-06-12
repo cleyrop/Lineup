@@ -1000,17 +1000,22 @@ class WindowManager: ObservableObject {
                                        [wid] as CFArray) as? [CGSSpaceID] ?? []
     }
 
-    /// Keep real top-level windows. Accepts AXStandardWindow and AXDialog —
-    /// Safari (and some others) report minimized windows as AXDialog, so
-    /// excluding dialogs dropped every Dock window. Windows with no subrole are
-    /// kept too (some apps don't set one on their main window).
+    /// The subrole-acceptance rule behind `isStandardWindow`, factored out as a
+    /// pure function so the Safari regression can be unit-tested without a live AX
+    /// element. Accepts AXStandardWindow and AXDialog — Safari (and some others)
+    /// report minimized Dock windows as AXDialog, so excluding dialogs dropped
+    /// every Dock window. A missing subrole (`nil`) is accepted too: some apps
+    /// don't set one on their main window.
+    static func acceptsWindowSubrole(_ subrole: String?) -> Bool {
+        guard let subrole else { return true }
+        return subrole == (kAXStandardWindowSubrole as String) || subrole == (kAXDialogSubrole as String)
+    }
+
+    /// Keep real top-level windows. See `acceptsWindowSubrole` for the rule.
     private func isStandardWindow(_ axWindow: AXUIElement) -> Bool {
         var subroleRef: CFTypeRef?
-        if AXUIElementCopyAttributeValue(axWindow, kAXSubroleAttribute as CFString, &subroleRef) == .success,
-           let subrole = subroleRef as? String {
-            return subrole == (kAXStandardWindowSubrole as String) || subrole == (kAXDialogSubrole as String)
-        }
-        return true
+        let copied = AXUIElementCopyAttributeValue(axWindow, kAXSubroleAttribute as CFString, &subroleRef) == .success
+        return Self.acceptsWindowSubrole(copied ? subroleRef as? String : nil)
     }
 
     private func windowTitle(_ axWindow: AXUIElement) -> String {
