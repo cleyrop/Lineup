@@ -8,7 +8,18 @@
 
 /* Begin PBXFileReference section */
 		574FC6CA2E350802004915FC /* Lineup.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lineup.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5A0000000000000000000003 /* LineupTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LineupTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXContainerItemProxy section */
+		5A000000000000000000000A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 574FC6C22E350802004915FC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 574FC6C92E350802004915FC;
+			remoteInfo = Lineup;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		574FC6CC2E350802004915FC /* Lineup */ = {
@@ -16,10 +27,22 @@
 			path = Lineup;
 			sourceTree = "<group>";
 		};
+		5A0000000000000000000002 /* LineupTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = LineupTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		574FC6C72E350802004915FC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A0000000000000000000005 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +56,7 @@
 			isa = PBXGroup;
 			children = (
 				574FC6CC2E350802004915FC /* Lineup */,
+				5A0000000000000000000002 /* LineupTests */,
 				574FC6CB2E350802004915FC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +65,7 @@
 			isa = PBXGroup;
 			children = (
 				574FC6CA2E350802004915FC /* Lineup.app */,
+				5A0000000000000000000003 /* LineupTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -70,6 +95,29 @@
 			productReference = 574FC6CA2E350802004915FC /* Lineup.app */;
 			productType = "com.apple.product-type.application";
 		};
+		5A0000000000000000000001 /* LineupTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5A0000000000000000000007 /* Build configuration list for PBXNativeTarget "LineupTests" */;
+			buildPhases = (
+				5A0000000000000000000004 /* Sources */,
+				5A0000000000000000000005 /* Frameworks */,
+				5A0000000000000000000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5A000000000000000000000B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				5A0000000000000000000002 /* LineupTests */,
+			);
+			name = LineupTests;
+			packageProductDependencies = (
+			);
+			productName = LineupTests;
+			productReference = 5A0000000000000000000003 /* LineupTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -82,6 +130,10 @@
 				TargetAttributes = {
 					574FC6C92E350802004915FC = {
 						CreatedOnToolsVersion = 16.2;
+					};
+					5A0000000000000000000001 = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 574FC6C92E350802004915FC;
 					};
 				};
 			};
@@ -100,12 +152,20 @@
 			projectRoot = "";
 			targets = (
 				574FC6C92E350802004915FC /* Lineup */,
+				5A0000000000000000000001 /* LineupTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		574FC6C82E350802004915FC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A0000000000000000000006 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +182,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5A0000000000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		5A000000000000000000000B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 574FC6C92E350802004915FC /* Lineup */;
+			targetProxy = 5A000000000000000000000A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		574FC6D72E350803004915FC /* Debug */ = {
@@ -303,6 +378,38 @@
 			};
 			name = Release;
 		};
+		5A0000000000000000000008 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 4SKW2Z97A2;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cleyrop.lineupTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Lineup.app/Contents/MacOS/Lineup";
+			};
+			name = Debug;
+		};
+		5A0000000000000000000009 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 4SKW2Z97A2;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cleyrop.lineupTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Lineup.app/Contents/MacOS/Lineup";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -320,6 +427,15 @@
 			buildConfigurations = (
 				574FC6DA2E350803004915FC /* Debug */,
 				574FC6DB2E350803004915FC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5A0000000000000000000007 /* Build configuration list for PBXNativeTarget "LineupTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5A0000000000000000000008 /* Debug */,
+				5A0000000000000000000009 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
