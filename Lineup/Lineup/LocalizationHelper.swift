@@ -401,7 +401,14 @@ struct LocalizedStrings {
     /// Read from the bundle so it always matches the shipped build.
     static var version: String {
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+#if DEBUG
+        // Dev builds (installed via scripts/dev-install.sh) stamp the git commit
+        // into CFBundleVersion; surface it so About reflects the real build.
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+        return "version".localized(with: "\(v) (dev \(build))")
+#else
         return "version".localized(with: v)
+#endif
     }
     static let appDescription = "app_description".localized
     static let mainFeatures = "main_features".localized

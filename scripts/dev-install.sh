@@ -21,9 +21,16 @@ DERIVED="/tmp/lineup-dev-build"
 DEST="$HOME/Applications/Lineup Dev.app"
 SIGN_ID="${LINEUP_DEV_SIGN_IDENTITY:-Apple Development: jeanhumann@icloud.com (G5KV523U79)}"
 
-echo "→ building Debug (com.cleyrop.lineup.dev)"
+# Stamp the build from git so About shows the real version + commit, not the
+# project's hardcoded baseline (CI injects these from the tag for releases).
+VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
+[[ -z "$VERSION" ]] && VERSION="0.0.0"
+BUILD="$(git rev-parse --short HEAD 2>/dev/null || echo dev)"
+
+echo "→ building Debug (com.cleyrop.lineup.dev — $VERSION, dev $BUILD)"
 xcodebuild -project Lineup/Lineup.xcodeproj -scheme Lineup -configuration Debug \
   -derivedDataPath "$DERIVED" -destination 'platform=macOS' \
+  MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" \
   CODE_SIGNING_ALLOWED=NO build >/dev/null
 
 APP="$DERIVED/Build/Products/Debug/Lineup.app"
