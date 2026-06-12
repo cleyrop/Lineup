@@ -54,7 +54,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             button.action = #selector(statusBarButtonClicked)
             button.target = self
             button.toolTip = LocalizedStrings.statusItemTooltip
-            
+#if DEBUG
+            // The dev build (com.cleyrop.lineup.dev / "Lineup Dev") runs next to
+            // the release — tint its menu-bar icon orange so the two are obvious.
+            button.contentTintColor = .systemOrange
+            button.toolTip = "\(LocalizedStrings.statusItemTooltip) (Dev)"
+#endif
             // Set up the right-click menu
             setupStatusBarMenu()
         }
@@ -88,7 +93,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     
     private func setupStatusBarMenu() {
         let menu = NSMenu()
-        
+
+        // App-name header (the bundle display name: "Lineup" or "Lineup Dev") so
+        // the two builds are tellable apart the moment their menu opens.
+        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "Lineup"
+        let header = NSMenuItem(title: appName, action: nil, keyEquivalent: "")
+        header.isEnabled = false
+        menu.addItem(header)
+        menu.addItem(NSMenuItem.separator())
+
         // Preferences menu item
         let preferencesItem = NSMenuItem(title: LocalizedStrings.preferences, action: #selector(showPreferences), keyEquivalent: ",")
         preferencesItem.target = self
