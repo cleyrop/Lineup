@@ -71,7 +71,7 @@ final class SettingsTests: XCTestCase {
     }
 
     func testDecodingToleratesMissingKeys() throws {
-        // Settings saved by an older version that predates showWindowPreviews.
+        // Settings saved by an older version that predates windowDisplayStyle.
         let json = """
         { "modifierKey": "function", "triggerKey": "Space" }
         """.data(using: .utf8)!
@@ -80,9 +80,18 @@ final class SettingsTests: XCTestCase {
         // so the user's config is never wiped when a field is added).
         XCTAssertEqual(decoded.modifierKey, .function)
         XCTAssertEqual(decoded.triggerKey, .space)
-        XCTAssertFalse(decoded.showWindowPreviews)
+        XCTAssertEqual(decoded.windowDisplayStyle, .appIcon)
         XCTAssertTrue(decoded.showWindowsFromAllSpaces)
         XCTAssertEqual(decoded.colorScheme, .system)
+    }
+
+    func testLegacyShowWindowPreviewsMapsToPreview() throws {
+        let json = """
+        { "showWindowPreviews": true }
+        """.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: json)
+        XCTAssertEqual(decoded.windowDisplayStyle, .preview,
+                       "Legacy showWindowPreviews=true should map to the Preview style")
     }
 
     func testCodableRoundTripPreservesAllFields() throws {

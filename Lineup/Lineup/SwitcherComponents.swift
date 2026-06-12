@@ -371,35 +371,80 @@ struct WindowStateBadge: View {
     }
 }
 
-// MARK: - Window Visual (thumbnail or icon)
-/// Shows a window screenshot when one has been captured (with the app icon as a
-/// small corner badge so the app is still obvious), otherwise the app icon alone.
+// MARK: - Window Visual (icon / initials / preview)
+/// Depicts a window per the chosen display style: the app icon, a colored
+/// monogram derived from the window title (distinct per window, no permission),
+/// or a live screenshot when one has been captured.
 struct WindowVisualView: View {
     let window: WindowInfo
+    @EnvironmentObject private var settingsManager: SettingsManager
 
     var body: some View {
-        if let thumbnail = window.thumbnail {
-            ZStack(alignment: .bottomTrailing) {
-                Image(nsImage: thumbnail)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 72, height: 48)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
-                    )
-                AppIconView(processID: window.processID)
-                    .frame(width: 22, height: 22)
-                    .padding(2)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(.regularMaterial))
-                    .padding(3)
+        switch settingsManager.settings.windowDisplayStyle {
+        case .preview:
+            if let thumbnail = window.thumbnail {
+                ZStack(alignment: .bottomTrailing) {
+                    Image(nsImage: thumbnail)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 72, height: 48)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                        )
+                    AppIconView(processID: window.processID)
+                        .frame(width: 22, height: 22)
+                        .padding(2)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(.regularMaterial))
+                        .padding(3)
+                }
+                .frame(width: 72, height: 48)
+            } else {
+                AppIconView(processID: window.processID).frame(width: 48, height: 48)
             }
-            .frame(width: 72, height: 48)
-        } else {
-            AppIconView(processID: window.processID)
-                .frame(width: 48, height: 48)
+        case .initials:
+            MonogramView(text: window.projectName).frame(width: 48, height: 48)
+        case .appIcon:
+            AppIconView(processID: window.processID).frame(width: 48, height: 48)
         }
+    }
+}
+
+// MARK: - Monogram
+/// A colored rounded square showing 1–2 initials from the text. Both the initials
+/// and the color are derived deterministically from the text, so each distinct
+/// window title gets a stable, recognizable badge — without any permission.
+struct MonogramView: View {
+    let text: String
+
+    private var initials: String {
+        let words = text.split(whereSeparator: { " -_/.|—".contains($0) })
+        let letters = words.prefix(2).compactMap { $0.first }.map(String.init).joined()
+        return (letters.isEmpty ? String(text.prefix(1)) : letters).uppercased()
+    }
+
+    private var color: Color {
+        // djb2 hash — deterministic across launches (unlike Swift's hashValue).
+        var h = 5381
+        for scalar in text.unicodeScalars { h = (h &* 33) &+ Int(scalar.value) }
+        let hue = Double(abs(h) % 360) / 360.0
+        return Color(hue: hue, saturation: 0.5, brightness: 0.82)
+    }
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 11, style: .continuous)
+            .fill(LinearGradient(colors: [color, color.opacity(0.7)],
+                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+            .overlay(
+                Text(initials)
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
+            )
     }
 }
 

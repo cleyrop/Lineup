@@ -168,13 +168,29 @@ enum TitleExtractionStrategy: String, CaseIterable, Codable {
 enum SwitcherHeaderStyle: String, CaseIterable, Codable {
     case `default` = "default"
     case simplified = "simplified"
-    
+
     var displayName: String {
         switch self {
         case .default:
             return LocalizedStrings.headerStyleDefault
         case .simplified:
             return LocalizedStrings.headerStyleSimplified
+        }
+    }
+}
+
+// MARK: - Window Display Style
+/// How each window is depicted in the list switcher.
+enum WindowDisplayStyle: String, CaseIterable, Codable {
+    case appIcon = "appIcon"    // the app's icon (same for every window of an app)
+    case initials = "initials"  // a colored monogram from the window title — distinct, no permission
+    case preview = "preview"    // a live screenshot (requires Screen Recording)
+
+    var displayName: String {
+        switch self {
+        case .appIcon: return LocalizedStrings.windowDisplayAppIcon
+        case .initials: return LocalizedStrings.windowDisplayInitials
+        case .preview: return LocalizedStrings.windowDisplayPreview
         }
     }
 }
@@ -401,9 +417,8 @@ struct AppSettings: Codable {
     // Include windows living on other Spaces / desktops, not just the current one
     var showWindowsFromAllSpaces: Bool
 
-    // Show a live screenshot of each window instead of its app icon
-    // (requires Screen Recording permission; off by default)
-    var showWindowPreviews: Bool
+    // How each window is shown in the list (app icon / initials / preview)
+    var windowDisplayStyle: WindowDisplayStyle
 
     // Switcher position settings
     var switcherVerticalPosition: Double // 0.1 to 0.8, default 0.39 (golden ratio)
@@ -463,8 +478,8 @@ struct AppSettings: Codable {
         switcherFollowActiveWindow: true,
         // Include windows from all Spaces by default
         showWindowsFromAllSpaces: true,
-        // Window previews are opt-in (need Screen Recording)
-        showWindowPreviews: false,
+        // Window visual: the app icon by default (no permission)
+        windowDisplayStyle: .appIcon,
         // Switcher position default settings
         switcherVerticalPosition: 0.39,
         // Switcher header style default settings
@@ -479,9 +494,14 @@ struct AppSettings: Codable {
 // the user's existing configuration. In an extension so the memberwise init
 // used by `AppSettings.default` is preserved.
 extension AppSettings {
+    private enum LegacyKeys: String, CodingKey { case showWindowPreviews }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let d = AppSettings.default
+        // Back-compat: an older build stored a showWindowPreviews bool.
+        let legacy = try decoder.container(keyedBy: LegacyKeys.self)
+        let legacyPreviews = try legacy.decodeIfPresent(Bool.self, forKey: .showWindowPreviews) ?? false
         self.init(
             modifierKey: try c.decodeIfPresent(ModifierKey.self, forKey: .modifierKey) ?? d.modifierKey,
             triggerKey: try c.decodeIfPresent(TriggerKey.self, forKey: .triggerKey) ?? d.triggerKey,
@@ -495,7 +515,8 @@ extension AppSettings {
             showNumberKeys: try c.decodeIfPresent(Bool.self, forKey: .showNumberKeys) ?? d.showNumberKeys,
             switcherFollowActiveWindow: try c.decodeIfPresent(Bool.self, forKey: .switcherFollowActiveWindow) ?? d.switcherFollowActiveWindow,
             showWindowsFromAllSpaces: try c.decodeIfPresent(Bool.self, forKey: .showWindowsFromAllSpaces) ?? d.showWindowsFromAllSpaces,
-            showWindowPreviews: try c.decodeIfPresent(Bool.self, forKey: .showWindowPreviews) ?? d.showWindowPreviews,
+            windowDisplayStyle: try c.decodeIfPresent(WindowDisplayStyle.self, forKey: .windowDisplayStyle)
+                ?? (legacyPreviews ? .preview : d.windowDisplayStyle),
             switcherVerticalPosition: try c.decodeIfPresent(Double.self, forKey: .switcherVerticalPosition) ?? d.switcherVerticalPosition,
             switcherHeaderStyle: try c.decodeIfPresent(SwitcherHeaderStyle.self, forKey: .switcherHeaderStyle) ?? d.switcherHeaderStyle,
             colorScheme: try c.decodeIfPresent(ColorScheme.self, forKey: .colorScheme) ?? d.colorScheme
@@ -602,12 +623,12 @@ class SettingsManager: ObservableObject {
         saveSettings()
     }
 
-    func updateShowWindowPreviews(_ enabled: Bool) {
-        settings.showWindowPreviews = enabled
+    func updateWindowDisplayStyle(_ style: WindowDisplayStyle) {
+        settings.windowDisplayStyle = style
         saveSettings()
-        // Prompt for Screen Recording the first time the user opts in; without it
-        // captures return nothing and rows simply keep their app icon.
-        if enabled {
+        // Prompt for Screen Recording when the user picks Preview; without it
+        // captures return nothing and rows fall back to the app icon.
+        if style == .preview {
             CGRequestScreenCaptureAccess()
         }
     }

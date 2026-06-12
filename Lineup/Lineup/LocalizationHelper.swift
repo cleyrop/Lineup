@@ -342,8 +342,11 @@ struct LocalizedStrings {
     static let followActiveWindowDescription = "follow_active_window_description".localized
     static let showWindowsFromAllSpacesLabel = "show_windows_from_all_spaces_label".localized
     static let showWindowsFromAllSpacesDescription = "show_windows_from_all_spaces_description".localized
-    static let showWindowPreviewsLabel = "show_window_previews_label".localized
-    static let showWindowPreviewsDescription = "show_window_previews_description".localized
+    static let windowDisplayStyleLabel = "window_display_style_label".localized
+    static let windowDisplayStyleDescription = "window_display_style_description".localized
+    static let windowDisplayAppIcon = "window_display_app_icon".localized
+    static let windowDisplayInitials = "window_display_initials".localized
+    static let windowDisplayPreview = "window_display_preview".localized
 
     // MARK: - Switcher Position Settings
     static let switcherVerticalPositionLabel = "switcher_vertical_position_label".localized

@@ -210,8 +210,11 @@
 "follow_active_window_description" = "Display switcher on the same screen as the active window, otherwise always on primary display";
 "show_windows_from_all_spaces_label" = "Show Windows From All Spaces";
 "show_windows_from_all_spaces_description" = "List the app's windows from every Space / desktop, not just the current one";
-"show_window_previews_label" = "Show Window Previews";
-"show_window_previews_description" = "Show a live screenshot of each window instead of the app icon (requires Screen Recording permission)";
+"window_display_style_label" = "Window Display";
+"window_display_style_description" = "How each window appears in the list. Preview shows a live screenshot (requires Screen Recording); Initials shows a colored badge from the title — no permission needed";
+"window_display_app_icon" = "App Icon";
+"window_display_initials" = "Initials";
+"window_display_preview" = "Preview";
 
 // MARK: - Advanced Settings - Switcher Position Settings
 "switcher_vertical_position_label" = "Vertical Position";

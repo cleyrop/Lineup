@@ -1379,14 +1379,19 @@ struct SwitcherPaneView: View {
                     .labelsHidden()
                 }
                 RowDivider()
-                SettingsRow(title: LocalizedStrings.showWindowPreviewsLabel,
-                            subtitle: LocalizedStrings.showWindowPreviewsDescription) {
-                    Toggle("", isOn: Binding(
-                        get: { settingsManager.settings.showWindowPreviews },
-                        set: { settingsManager.updateShowWindowPreviews($0) }
-                    ))
-                    .toggleStyle(.switch)
+                SettingsRow(title: LocalizedStrings.windowDisplayStyleLabel,
+                            subtitle: LocalizedStrings.windowDisplayStyleDescription) {
+                    Picker("", selection: Binding(
+                        get: { settingsManager.settings.windowDisplayStyle },
+                        set: { settingsManager.updateWindowDisplayStyle($0) }
+                    )) {
+                        ForEach(WindowDisplayStyle.allCases, id: \.self) { style in
+                            Text(style.displayName).tag(style)
+                        }
+                    }
+                    .pickerStyle(.segmented)
                     .labelsHidden()
+                    .frame(width: 220)
                 }
             }
 

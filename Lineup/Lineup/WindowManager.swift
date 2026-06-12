@@ -903,7 +903,7 @@ class WindowManager: ObservableObject {
     /// switcher is already on screen. Opt-in (showWindowPreviews) and only when
     /// Screen Recording is granted; otherwise rows keep their app icon.
     private func captureThumbnailsAsync() {
-        guard settingsManager.settings.showWindowPreviews,
+        guard settingsManager.settings.windowDisplayStyle == .preview,
               CGPreflightScreenCaptureAccess() else { return }
         let snapshot = windows
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
