@@ -210,6 +210,10 @@
 "follow_active_window_description" = "Display switcher on the same screen as the active window, otherwise always on primary display";
 "show_windows_from_all_spaces_label" = "Show Windows From All Spaces";
 "show_windows_from_all_spaces_description" = "List the app's windows from every Space / desktop, not just the current one";
+"follow_across_desktops_label" = "Smooth Desktop Transition";
+"follow_across_desktops_description" = "When switching to a window on another desktop, the switcher rides the Space transition smoothly instead of vanishing first";
+"double_tap_to_hold_label" = "Double-Tap to Hold Open";
+"double_tap_to_hold_description" = "Double-tap the trigger to keep the switcher open after releasing the modifier, so you can browse windows across desktops hands-free (Enter or click to confirm, Esc to cancel)";
 "window_display_style_label" = "Window Display";
 "window_display_style_description" = "How each window appears in the list. Preview shows a live screenshot (requires Screen Recording); Initials shows a colored badge from the title — no permission needed";
 "window_display_app_icon" = "App Icon";

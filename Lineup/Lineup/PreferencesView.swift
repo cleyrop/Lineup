@@ -1379,6 +1379,26 @@ struct SwitcherPaneView: View {
                     .labelsHidden()
                 }
                 RowDivider()
+                SettingsRow(title: LocalizedStrings.followAcrossDesktopsLabel,
+                            subtitle: LocalizedStrings.followAcrossDesktopsDescription) {
+                    Toggle("", isOn: Binding(
+                        get: { settingsManager.settings.followAcrossDesktops },
+                        set: { settingsManager.updateFollowAcrossDesktops($0) }
+                    ))
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                }
+                RowDivider()
+                SettingsRow(title: LocalizedStrings.doubleTapToHoldLabel,
+                            subtitle: LocalizedStrings.doubleTapToHoldDescription) {
+                    Toggle("", isOn: Binding(
+                        get: { settingsManager.settings.doubleTapToHold },
+                        set: { settingsManager.updateDoubleTapToHold($0) }
+                    ))
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                }
+                RowDivider()
                 SettingsRow(title: LocalizedStrings.windowDisplayStyleLabel,
                             subtitle: LocalizedStrings.windowDisplayStyleDescription) {
                     Picker("", selection: Binding(

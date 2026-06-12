@@ -62,6 +62,12 @@ class WindowManager: ObservableObject {
     // Event handling state management
     private var isProcessingKeyEvent = false
     private var lastModifierEventTime = Date()
+
+    // Double-tap-to-hold (peek) mode: when the trigger is double-tapped quickly,
+    // the switcher stays open after the modifier is released until the user
+    // commits (Enter/click) or cancels (Esc).
+    private var switcherOpenTime = Date()
+    private var switcherHeld = false
     
     // Modifier key watchdog mechanism
     private var modifierKeyWatchdog: Timer?
@@ -345,11 +351,50 @@ class WindowManager: ObservableObject {
         switcherWindow?.backgroundColor = NSColor.clear
         switcherWindow?.hasShadow = true
         switcherWindow?.isOpaque = false
-        
+        // Appear on every Space and over full-screen apps, and stay put during a
+        // Space slide — so the switcher remains visible (and can animate) while
+        // macOS transitions to another desktop, instead of vanishing.
+        switcherWindow?.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        switcherWindow?.animationBehavior = .none
+
         // Initial content view will be set on first display
         switcherWindow?.contentView = NSView() // Temporary empty view
-        
+
         // Position will be set when displaying
+    }
+
+    /// Fade the switcher in.
+    private func presentSwitcherWindow() {
+        guard let w = switcherWindow else { return }
+        w.alphaValue = 0
+        w.makeKeyAndOrderFront(nil)
+        NSApp.activateCompat()
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.12
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            w.animator().alphaValue = 1.0
+        }
+    }
+
+    /// Dismiss the switcher. When `rideTransition` is true the panel (which spans
+    /// all Spaces) stays up and fades out over the Space slide, so it visibly
+    /// rides the transition to the new desktop instead of vanishing first.
+    private func dismissSwitcherWindow(rideTransition: Bool) {
+        guard let w = switcherWindow else { return }
+        let finish = {
+            w.orderOut(nil)
+            w.alphaValue = 1.0
+            w.contentView = NSView()
+        }
+        if rideTransition {
+            NSAnimationContext.runAnimationGroup({ ctx in
+                ctx.duration = 0.32
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                w.animator().alphaValue = 0.0
+            }, completionHandler: finish)
+        } else {
+            finish()
+        }
     }
     
     // MARK: - Switcher Window Positioning
@@ -483,16 +528,17 @@ class WindowManager: ObservableObject {
         
         isShowingSwitcher = true
         currentWindowIndex = windows.count > 1 ? 1 : 0
-        
+        switcherOpenTime = Date()
+        switcherHeld = false
+
         hotkeyManager?.temporarilyDisableHotkey()
         
         currentViewType = .ds2
         switcherWindow?.contentView = createDS2HostingView()
         
         positionSwitcherWindow()
-        
-        switcherWindow?.makeKeyAndOrderFront(nil)
-        NSApp.activateCompat()
+
+        presentSwitcherWindow()
         
         // DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
         //     guard let self = self, self.isShowingSwitcher else { return }
@@ -534,9 +580,8 @@ class WindowManager: ObservableObject {
         switcherWindow?.contentView = createCT2HostingView()
         
         positionSwitcherWindow()
-        
-        switcherWindow?.makeKeyAndOrderFront(nil)
-        NSApp.activateCompat()
+
+        presentSwitcherWindow()
         
         // DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
         //     guard let self = self, self.isShowingAppSwitcher else { return }
@@ -1475,44 +1520,54 @@ class WindowManager: ObservableObject {
 
             if event.keyCode == UInt16(settings.triggerKey.keyCode) {
                 if event.modifierFlags.contains(settings.modifierKey.eventModifier) {
+                    // A quick second trigger tap (within 350 ms of opening) engages
+                    // peek/hold mode: the switcher stays open after the modifier is
+                    // released, so you can browse across desktops hands-free.
+                    if settings.doubleTapToHold && !switcherHeld
+                        && Date().timeIntervalSince(switcherOpenTime) < 0.35 {
+                        switcherHeld = true
+                        Logger.log("📌 [\(source)] DS2 double-tap → hold mode engaged")
+                    }
+
                     let isShiftPressed = event.modifierFlags.contains(.shift)
-                    
                     if isShiftPressed {
-                        Logger.log("🟢 [\(source)] DS2 reverse switch: \(currentWindowIndex) -> ", terminator: "")
                         moveToPreviousWindow()
-                        Logger.log("\(currentWindowIndex)")
                     } else {
-                        Logger.log("🟢 [\(source)] DS2 forward switch: \(currentWindowIndex) -> ", terminator: "")
                         moveToNextWindow()
-                        Logger.log("\(currentWindowIndex)")
                     }
                     return nil
                 }
             }
-            
+
         case .flagsChanged:
             let now = Date()
             let timeSinceLastModifier = now.timeIntervalSince(lastModifierEventTime)
-            
+
             if timeSinceLastModifier < 0.05 {
                 return source == "global" ? nil : event
             }
-            
+
             lastModifierEventTime = now
-            
+
             if !event.modifierFlags.contains(settings.modifierKey.eventModifier) {
+                // In hold mode the switcher stays open after the modifier is
+                // released (dismissed later via Enter/click/Esc).
+                if switcherHeld {
+                    Logger.log("📌 [\(source)] modifier released but switcher is held open")
+                    return source == "global" ? nil : event
+                }
                 Logger.log("🔴 [\(source)] \(settings.modifierKey.displayName) key release detected, closing DS2 switcher")
                 hideSwitcherAsync()
                 return nil
             }
-            
+
         default:
             break
         }
-        
+
         return source == "global" ? nil : event
     }
-    
+
     private func handleCT2UnifiedEvent(_ event: NSEvent, source: String) -> NSEvent? {
         let settings = settingsManager.settings
         
@@ -1606,32 +1661,33 @@ class WindowManager: ObservableObject {
         Logger.log("🚀 Async DS2 switcher hiding started")
         
         isShowingSwitcher = false
-        switcherWindow?.orderOut(nil)
-        
-        switcherWindow?.contentView = NSView()
-        
+        switcherHeld = false
+
         stopModifierKeyWatchdog()
-        
         stopNumberKeyGlobalIntercept()
-        
         cleanupEventMonitors()
-        
         hotkeyManager?.reEnableHotkey()
-        
-        DispatchQueue.global(qos: .utility).async {
-            AppIconCache.shared.clearCache()
-        }
-        
-        if currentWindowIndex < windows.count {
-            let targetWindow = windows[currentWindowIndex]
-            Logger.log("🎯 Preparing async window activation: \(targetWindow.title)")
-            
+
+        let targetWindow = currentWindowIndex < windows.count ? windows[currentWindowIndex] : nil
+        // Ride the Space slide only when actually crossing desktops, so same-desktop
+        // selection stays instant.
+        let rideTransition = settingsManager.settings.followAcrossDesktops
+            && (targetWindow?.isOnOtherSpace ?? false)
+
+        // Activate first (this triggers the Space switch), then fade the panel out
+        // over the transition.
+        if let targetWindow = targetWindow {
+            Logger.log("🎯 Activating window: \(targetWindow.title)")
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 self?.activateWindowAsync(targetWindow)
             }
         }
-        
-        Logger.log("🚀 DS2 switcher UI hidden, window activation in progress asynchronously")
+
+        dismissSwitcherWindow(rideTransition: rideTransition)
+
+        DispatchQueue.global(qos: .utility).async {
+            AppIconCache.shared.clearCache()
+        }
     }
     
     private func hideAppSwitcherAsync() {
@@ -1640,24 +1696,16 @@ class WindowManager: ObservableObject {
         Logger.log("🚀 Async CT2 switcher hiding started")
         
         isShowingAppSwitcher = false
-        switcherWindow?.orderOut(nil)
-        
-        switcherWindow?.contentView = NSView()
-        
+
         stopModifierKeyWatchdog()
-        
         stopNumberKeyGlobalIntercept()
-        
         cleanupEventMonitors()
-        
         hotkeyManager?.reEnableHotkey()
-        
         hotkeyManager?.resetCT2SwitcherState()
-        
-        DispatchQueue.global(qos: .utility).async {
-            AppIconCache.shared.clearCache()
-        }
-        
+
+        // An app switch often crosses desktops; ride the slide when enabled.
+        let rideTransition = settingsManager.settings.followAcrossDesktops
+
         if currentAppIndex < apps.count {
             let target = apps[currentAppIndex]
             Logger.log("🎯 Activating application: \(target.appName)")
@@ -1667,7 +1715,11 @@ class WindowManager: ObservableObject {
                 .activate(options: [.activateAllWindows])
         }
 
-        Logger.log("🚀 CT2 switcher UI hidden, application activated")
+        dismissSwitcherWindow(rideTransition: rideTransition)
+
+        DispatchQueue.global(qos: .utility).async {
+            AppIconCache.shared.clearCache()
+        }
     }
     
     private func activateWindowAsync(_ window: WindowInfo) {
@@ -1832,9 +1884,16 @@ class WindowManager: ObservableObject {
         }
         
         if !currentModifiers.contains(requiredModifier) {
+            // In hold mode (DS2 peek), don't auto-close on modifier release; the
+            // user dismisses explicitly. Stop the watchdog so it doesn't keep firing.
+            if switcherType == .ds2 && switcherHeld {
+                Logger.log("🐕📌 Watchdog: modifier released but switcher is held; standing down")
+                stopModifierKeyWatchdog()
+                return
+            }
             Logger.log("🐕🚨 [Watchdog Detection] \(modifierName) key released, immediately closing \(switcherType == .ds2 ? "DS2" : "CT2") switcher")
             stopModifierKeyWatchdog()
-            
+
             DispatchQueue.main.async { [weak self] in
                 switch switcherType {
                 case .ds2:

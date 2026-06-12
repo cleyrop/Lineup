@@ -342,6 +342,10 @@ struct LocalizedStrings {
     static let followActiveWindowDescription = "follow_active_window_description".localized
     static let showWindowsFromAllSpacesLabel = "show_windows_from_all_spaces_label".localized
     static let showWindowsFromAllSpacesDescription = "show_windows_from_all_spaces_description".localized
+    static let followAcrossDesktopsLabel = "follow_across_desktops_label".localized
+    static let followAcrossDesktopsDescription = "follow_across_desktops_description".localized
+    static let doubleTapToHoldLabel = "double_tap_to_hold_label".localized
+    static let doubleTapToHoldDescription = "double_tap_to_hold_description".localized
     static let windowDisplayStyleLabel = "window_display_style_label".localized
     static let windowDisplayStyleDescription = "window_display_style_description".localized
     static let windowDisplayAppIcon = "window_display_app_icon".localized

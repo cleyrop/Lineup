@@ -420,6 +420,14 @@ struct AppSettings: Codable {
     // How each window is shown in the list (app icon / initials / preview)
     var windowDisplayStyle: WindowDisplayStyle
 
+    // When selecting a window on another desktop, keep the switcher visible and
+    // let it ride the Space transition (smooth) instead of vanishing first.
+    var followAcrossDesktops: Bool
+
+    // Double-tapping the trigger opens the switcher in "peek" mode: it follows you
+    // across desktops as you navigate and stays open until you release the modifier.
+    var doubleTapToHold: Bool
+
     // Switcher position settings
     var switcherVerticalPosition: Double // 0.1 to 0.8, default 0.39 (golden ratio)
     
@@ -480,6 +488,9 @@ struct AppSettings: Codable {
         showWindowsFromAllSpaces: true,
         // Window visual: a colored monogram by default (distinct per window, no permission)
         windowDisplayStyle: .initials,
+        // Smooth cross-desktop transition on by default; peek mode is opt-in
+        followAcrossDesktops: true,
+        doubleTapToHold: false,
         // Switcher position default settings
         switcherVerticalPosition: 0.39,
         // Switcher header style default settings
@@ -517,6 +528,8 @@ extension AppSettings {
             showWindowsFromAllSpaces: try c.decodeIfPresent(Bool.self, forKey: .showWindowsFromAllSpaces) ?? d.showWindowsFromAllSpaces,
             windowDisplayStyle: try c.decodeIfPresent(WindowDisplayStyle.self, forKey: .windowDisplayStyle)
                 ?? (legacyPreviews ? .preview : d.windowDisplayStyle),
+            followAcrossDesktops: try c.decodeIfPresent(Bool.self, forKey: .followAcrossDesktops) ?? d.followAcrossDesktops,
+            doubleTapToHold: try c.decodeIfPresent(Bool.self, forKey: .doubleTapToHold) ?? d.doubleTapToHold,
             switcherVerticalPosition: try c.decodeIfPresent(Double.self, forKey: .switcherVerticalPosition) ?? d.switcherVerticalPosition,
             switcherHeaderStyle: try c.decodeIfPresent(SwitcherHeaderStyle.self, forKey: .switcherHeaderStyle) ?? d.switcherHeaderStyle,
             colorScheme: try c.decodeIfPresent(ColorScheme.self, forKey: .colorScheme) ?? d.colorScheme
@@ -620,6 +633,16 @@ class SettingsManager: ObservableObject {
 
     func updateShowWindowsFromAllSpaces(_ enabled: Bool) {
         settings.showWindowsFromAllSpaces = enabled
+        saveSettings()
+    }
+
+    func updateFollowAcrossDesktops(_ enabled: Bool) {
+        settings.followAcrossDesktops = enabled
+        saveSettings()
+    }
+
+    func updateDoubleTapToHold(_ enabled: Bool) {
+        settings.doubleTapToHold = enabled
         saveSettings()
     }
 
