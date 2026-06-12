@@ -11,6 +11,13 @@ switchers:
   current app, with smart project-name extraction from window titles.
 - **App switcher** (default `⌘ + Tab`) — an enhanced Command-Tab across all apps.
 
+## Download
+
+Grab the latest signed, notarized `Lineup-<version>.dmg` from the
+[Releases](https://github.com/cleyrop/Lineup/releases) page, open it, and drag
+**Lineup** into Applications. On first launch macOS asks for **Accessibility**
+permission — see [Permissions](#permissions).
+
 ## What's different from DevSwitcher2
 
 - **List-only.** The circular/radial layout, outer-ring styles and floating-item
@@ -25,7 +32,7 @@ switchers:
 
 ## Build
 
-Requires Xcode (macOS 12+ deployment target).
+Requires Xcode (macOS 13+ deployment target).
 
 ```sh
 ./scripts/build-macos.sh        # unsigned Lineup.app for local use
@@ -38,7 +45,10 @@ For signed/notarized release builds and the CI pipeline, see [SIGNING.md](SIGNIN
 ## Permissions
 
 Lineup needs **Accessibility** permission (System Settings → Privacy & Security →
-Accessibility) to read and switch application windows.
+Accessibility) to read and switch application windows. **Screen Recording** is
+optional — it's only used for live window previews; skip it if you use the app
+icon or initials display style. Both are shown with one-click grant buttons under
+*Preferences → General → Permissions*.
 
 ## License
 

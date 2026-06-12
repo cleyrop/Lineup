@@ -1,0 +1,45 @@
+name: CI
+
+# Build + test on every push to main and every PR. Unsigned — signing happens
+# only on release tags (see release.yml). Runs on a GitHub-hosted macOS runner,
+# which ships Xcode, codesign and notarytool out of the box.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A new push to the same ref supersedes the in-flight run — saves macOS minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: Build & test
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      # The Accessibility-gated integration test XCTSkips on a headless runner
+      # (no AX grant); the rest run normally. No signing needed for tests.
+      - name: Unit + integration tests
+        run: |
+          xcodebuild test \
+            -project Lineup/Lineup.xcodeproj -scheme Lineup \
+            -configuration Debug -destination 'platform=macOS' \
+            -resultBundlePath build/TestResults \
+            CODE_SIGNING_ALLOWED=NO
+
+      # Exercise the actual release build path (Release config + version
+      # assertion) so a Release-only break is caught on PRs, not at tag time.
+      - name: Release build smoke (unsigned)
+        run: |
+          ./scripts/build-macos.sh
+          test -x "build/Build/Products/Release/Lineup.app/Contents/MacOS/Lineup"

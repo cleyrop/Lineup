@@ -1,0 +1,86 @@
+name: Release
+
+# Tag vX.Y.Z -> build, Developer ID sign, notarize, staple, package the DMG and
+# publish a GitHub Release with the DMG attached. Runs on a GitHub-hosted macOS
+# runner; the build/sign/package scripts are CI-agnostic (they only read env).
+on:
+  push:
+    tags: ['v*']
+
+# Needed for `gh release create` to publish the Release + upload the DMG.
+permissions:
+  contents: write
+
+# Never run two releases for the same tag at once.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, sign, notarize & publish
+    runs-on: macos-15
+    # notarytool --wait caps at 90m; the app and the DMG are each notarized, so
+    # keep the job budget above the worst case.
+    timeout-minutes: 180
+    env:
+      # Customer-facing build: a missing/partial cert set must fail, not skip.
+      STRICT: '1'
+      # Built-in env vars are injection-safe; assigning ref_name to env (not
+      # interpolating it inside run:) keeps it that way and gives the signing
+      # scripts a nicer gate message.
+      CI_COMMIT_TAG: ${{ github.ref_name }}
+      # The six Apple credentials — add these as repo or org secrets (see SIGNING.md).
+      APPLE_DEVELOPER_ID_APPLICATION_P12: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_P12 }}
+      APPLE_DEVELOPER_ID_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+      APPLE_NOTARY_KEY_ISSUER: ${{ secrets.APPLE_NOTARY_KEY_ISSUER }}
+      APPLE_NOTARY_KEY_P8: ${{ secrets.APPLE_NOTARY_KEY_P8 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: xcodebuild -version
+
+      # v1.2.3 -> MARKETING_VERSION 1.2.3; run number -> build number. Exported to
+      # GITHUB_ENV so the build script (and its version assertion) pick them up.
+      # The prerelease suffix is stripped (v1.2.3-rc1 -> 1.2.3) because
+      # CFBundleShortVersionString must be dotted-numeric; the full tag is still
+      # used for the Release title/tag below.
+      - name: Version from tag
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          echo "MARKETING_VERSION=${version%%-*}" >> "$GITHUB_ENV"
+          echo "CURRENT_PROJECT_VERSION=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+
+      # Don't sign/publish a release that hasn't passed tests.
+      - name: Test
+        run: |
+          xcodebuild test \
+            -project Lineup/Lineup.xcodeproj -scheme Lineup \
+            -configuration Debug -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Build
+        run: ./scripts/build-macos.sh
+
+      - name: Sign + notarize app
+        run: ./scripts/sign-and-notarize-macos.sh
+
+      - name: Package + sign + notarize DMG
+        run: ./scripts/package-dmg-macos.sh
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          case "$GITHUB_REF_NAME" in
+            *-*) prerelease="--prerelease" ;;
+          esac
+          gh release create "$GITHUB_REF_NAME" dist/Lineup-*.dmg \
+            --title "Lineup ${GITHUB_REF_NAME#v}" \
+            --generate-notes \
+            --verify-tag \
+            $prerelease

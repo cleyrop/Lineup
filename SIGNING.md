@@ -33,37 +33,33 @@ steps skip signing and emit an unsigned artifact with a warning.
 
 ## CI
 
-`.gitlab-ci.yml` runs the build on the runner tagged `macos`:
+The repo lives on **GitHub** (`cleyrop/Lineup`) and ships via **GitHub Actions**
+on GitHub-hosted macOS runners (`macos-15` — Xcode, `codesign` and `notarytool`
+preinstalled, fresh isolated VM per job):
 
-- **branches / MRs** → `build:macos` produces an unsigned app for verification.
-- **tags `vX.Y.Z`** → `release:macos` builds + signs + notarizes + staples + packages
-  the DMG. It sets `STRICT=1`, so a missing/partial credential set fails the
-  release instead of silently shipping an unsigned app.
+- **`.github/workflows/ci.yml`** — on push to `main` and on PRs: build + unit /
+  integration tests + an unsigned Release build smoke. No signing.
+- **`.github/workflows/release.yml`** — on tag `vX.Y.Z`: test → build → sign →
+  notarize → staple → package + sign + notarize the DMG → publish a GitHub
+  Release with the DMG attached. It sets `STRICT=1`, so a missing/partial
+  credential set fails the release instead of silently shipping unsigned.
 
-`resource_group: macos-signing` serializes Lineup's signing job with the SDK's —
-they share one Mac runner and each mutate the user keychain search list.
+The version is derived from the tag (`v1.2.3` → `MARKETING_VERSION=1.2.3`) and the
+build number from `github.run_number`.
 
-### Where CI runs — GitHub vs GitLab
+> A `.gitlab-ci.yml` is also kept for running the *same* scripts on Cleyrop's
+> self-hosted Mac runner (it shares the `macos-signing` resource group with the
+> SDK). It's an alternative, not the primary path — GitHub ignores it and GitLab
+> ignores `.github/`, so the two coexist harmlessly. Use it only if you mirror to
+> GitLab to avoid GitHub-hosted macOS minutes.
 
-The source repo lives on **GitHub** (`cleyrop/Lineup`), but the Apple
-credentials and the `macos` runner live on **GitLab** (`cleyrop-org`, project
-`apps/internal`). To get signed builds, the tag pipeline must run on GitLab. Two
-options:
+## Required secrets
 
-1. **Push-mirror** `cleyrop/Lineup` → a GitLab project under `cleyrop-org` and
-   let GitLab CI run `.gitlab-ci.yml` on tags. (Recommended — keeps GitHub as the
-   public/upstream-tracking home.)
-2. Move the repo to GitLab outright.
+The six Apple credentials must be available to the release job. Add them as
+**GitHub repository secrets** on `cleyrop/Lineup` (or organisation secrets so the
+SDK and any other project inherit them):
 
-Either way the `.gitlab-ci.yml` here is ready to run unchanged.
-
-## Required CI variables
-
-These six variables must be available to the signing job — provision them on the
-Lineup GitLab project, or once at the **`cleyrop-org` group level** so every
-project (including this one and the SDK) inherits them. All masked + protected.
-
-| Variable | Contents |
+| Secret | Contents |
 |---|---|
 | `APPLE_DEVELOPER_ID_APPLICATION_P12` | base64 `.p12` — Developer ID Application cert + private key |
 | `APPLE_DEVELOPER_ID_PASSWORD` | `.p12` export password |
@@ -72,15 +68,27 @@ project (including this one and the SDK) inherits them. All masked + protected.
 | `APPLE_NOTARY_KEY_ISSUER` | API key issuer UUID |
 | `APPLE_NOTARY_KEY_P8` | base64 `.p8` private key |
 
-The values already exist as project-level variables on `apps/internal` (used by
-`cleyrop-sdk`). Reuse those exact values. To copy a single one into the Lineup
-project with `glab`:
+The same values already exist as GitLab variables on `apps/internal` (used by
+`cleyrop-sdk`). Reuse them. Set each on GitHub with `gh` (reads the value from a
+file or stdin so it never lands in shell history):
 
 ```sh
-glab variable set APPLE_TEAM_ID "4SKW2Z97A2" -R cleyrop-org/Lineup --masked --protected
-# ...repeat for each, pulling values from the apps/internal project or a secret store.
+gh secret set APPLE_TEAM_ID --repo cleyrop/Lineup --body "4SKW2Z97A2"
+gh secret set APPLE_DEVELOPER_ID_APPLICATION_P12 --repo cleyrop/Lineup < developer_id.p12.base64
+gh secret set APPLE_NOTARY_KEY_P8 --repo cleyrop/Lineup < notary_key.p8.base64
+# ...repeat for APPLE_DEVELOPER_ID_PASSWORD, APPLE_NOTARY_KEY_ID, APPLE_NOTARY_KEY_ISSUER
 ```
+
+The `.p12` and `.p8` secrets are the **base64** of the binary files (the scripts
+`base64 --decode` them), e.g. `base64 -i cert.p12 -o developer_id.p12.base64`.
 
 The two `scripts/AppleDeveloperID*.cer` files are the public Apple intermediate
 CAs (not secrets); they are committed so the leaf chains to the Apple Root on the
 runner regardless of which intermediate signed it.
+
+## Cutting a release
+
+```sh
+git tag v1.0.0
+git push origin v1.0.0     # triggers release.yml -> signed DMG on the Releases page
+```
