@@ -89,7 +89,10 @@ struct PreferencesView: View {
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(.accentColor)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Lineup").font(.headline)
+                    // Use the bundle display name so the dev build reads
+                    // "Lineup Dev" — makes the two Preferences windows tellable apart.
+                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "Lineup")
+                        .font(.headline)
                     Text(LocalizedStrings.preferencesSubtitle)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
