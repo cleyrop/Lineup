@@ -71,6 +71,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         
         // Register the hotkey
         hotkeyManager?.registerHotkey()
+
+        // If we were relaunched from Preferences (e.g. the permissions
+        // restart-to-apply button), reopen the configuration window.
+        if ProcessInfo.processInfo.arguments.contains(reopenPreferencesLaunchArgument) {
+            DispatchQueue.main.async { [weak self] in self?.showPreferences() }
+        }
     }
     
     @objc func statusBarButtonClicked() {
@@ -152,8 +158,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 
                 let response = alert.runModal()
                 if response == .alertFirstButtonReturn {
-                    // Open System Settings
-                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+                    // Open System Settings — modern pane id (the pre-Ventura
+                    // com.apple.preference.security no longer navigates on 13+).
+                    if let url = URL(string: "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Accessibility") {
+                        NSWorkspace.shared.open(url)
+                    }
                 }
             }
             

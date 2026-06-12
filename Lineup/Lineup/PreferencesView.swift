@@ -179,6 +179,9 @@ struct PermissionsSettingsSection: View {
     // always needs a relaunch; Accessibility's cached check often does too), so
     // we surface a one-click restart once they've started granting.
     @State private var didRequestPermission = false
+    // The first Screen Recording request shows the system prompt and registers
+    // Lineup in the list; after that we just deep-link to the pane.
+    @State private var screenRecordingAsked = false
 
     // Poll while the pane is visible to reflect changes made in System Settings.
     private let refresh = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
@@ -231,22 +234,31 @@ struct PermissionsSettingsSection: View {
 
     private func requestAccessibility() {
         didRequestPermission = true
-        let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-        let prompted = AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
-        accessibilityGranted = prompted
-        if !prompted {
+        // Don't fire the AX system prompt (the redundant "…or Deny" dialog).
+        // Lineup is already listed under Accessibility because it uses the AX
+        // API, so take the user straight to the pane to flip the switch — one
+        // window, no scary Deny button stacked on top of it.
+        accessibilityGranted = AXIsProcessTrusted()
+        if !accessibilityGranted {
             openSettings("Privacy_Accessibility")
         }
     }
 
     private func requestScreenRecording() {
         didRequestPermission = true
-        // Triggers the system prompt the first time; afterward it's a no-op and
-        // the user must toggle it in System Settings, so deep-link there too.
-        let granted = CGRequestScreenCaptureAccess()
-        screenRecordingGranted = granted
-        if !granted {
-            openSettings("Privacy_ScreenCapture")
+        if screenRecordingAsked {
+            // Already prompted once (Lineup is in the list now) — just open the
+            // pane; CGRequest would be a silent no-op here.
+            screenRecordingGranted = CGPreflightScreenCaptureAccess()
+            if !screenRecordingGranted {
+                openSettings("Privacy_ScreenCapture")
+            }
+        } else {
+            // First ask registers Lineup in the Screen Recording list and shows
+            // the system prompt, which has its own "Open System Settings" button —
+            // so don't also deep-link, which would stack a second window.
+            screenRecordingAsked = true
+            screenRecordingGranted = CGRequestScreenCaptureAccess()
         }
     }
 
