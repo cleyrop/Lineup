@@ -13,10 +13,16 @@ switchers:
 
 ## Download
 
-Grab the latest signed, notarized `Lineup-<version>.dmg` from the
+Via [Homebrew](https://brew.sh):
+
+```sh
+brew install --cask cleyrop/lineup/lineup
+```
+
+Or grab the latest signed, notarized `Lineup-<version>.dmg` from the
 [Releases](https://github.com/cleyrop/Lineup/releases) page, open it, and drag
-**Lineup** into Applications. On first launch macOS asks for **Accessibility**
-permission — see [Permissions](#permissions).
+**Lineup** into Applications. Either way, on first launch macOS asks for
+**Accessibility** permission — see [Permissions](#permissions).
 
 ## What's different from DevSwitcher2
 

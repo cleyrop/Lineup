@@ -92,3 +92,24 @@ runner regardless of which intermediate signed it.
 git tag v1.0.0
 git push origin v1.0.0     # triggers release.yml -> signed DMG on the Releases page
 ```
+
+## Homebrew tap
+
+The app is distributed via the Cleyrop tap [`cleyrop/homebrew-lineup`](https://github.com/cleyrop/homebrew-lineup):
+
+```sh
+brew install --cask cleyrop/lineup/lineup
+```
+
+`release.yml`'s final step bumps that tap's `Casks/lineup.rb` (version + DMG
+`sha256`) automatically on every stable tag. It needs **`HOMEBREW_TAP_TOKEN`** —
+a token with `contents: write` on `cleyrop/homebrew-lineup` — as a repo secret;
+without it the step is skipped (the release still publishes, the cask just won't
+auto-bump). Create a fine-grained PAT scoped to that one repo and add it:
+
+```sh
+gh secret set HOMEBREW_TAP_TOKEN --repo cleyrop/Lineup < token.txt
+```
+
+Prerelease tags (`v1.2.3-rc1`) are skipped so the cask only tracks stable
+releases.
