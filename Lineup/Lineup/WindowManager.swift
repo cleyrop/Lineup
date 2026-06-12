@@ -27,7 +27,9 @@ struct WindowInfo {
     // Populated by the SkyLight DS2 enumeration only:
     var cgWindowID: CGWindowID = 0    // real window-server id, used for focus
     var spaceID: CGSSpaceID = 0       // the Space the window lives on
+    var spaceIndex: Int = 0           // 1-based desktop number (0 = current/unknown)
     var axElement: AXUIElement? = nil // resolved at enumeration time (covers off-Space windows)
+    var thumbnail: NSImage? = nil     // window screenshot (when Screen Recording is granted)
 }
 
 // MARK: - App Info Data Structure
@@ -698,6 +700,7 @@ class WindowManager: ObservableObject {
         Logger.log("\n📋 System found \(windowList.count) windows in total")
         
         enumerateAppWindowsViaAX(targetApp: targetApp)
+        captureThumbnailsAsync()
 
         Logger.log("📊 Final added windows: \(windows.count)")
         Logger.log("=== Debug Information End ===\n")
@@ -723,6 +726,7 @@ class WindowManager: ObservableObject {
         let pid = targetApp.processIdentifier
 
         let visibleSpaces = visibleSpaceIDs()
+        let spaceIndexes = spaceIndexMap()  // Space id -> 1-based desktop number
         let axWindows = allAppWindows(pid)
 
         // z-order of windows on the visible Space(s), topmost first.
@@ -732,7 +736,10 @@ class WindowManager: ObservableObject {
 
         let syntheticIDBase: CGWindowID = 0xF000_0000
         var seen = Set<CGWindowID>()
-        var built = [(order: Int, info: WindowInfo)]()
+        // Stable sort key (group, secondary, id): group 0=current Space (z-order),
+        // 1=other Space (by desktop number), 2=minimized. Ties break on the window
+        // id, which is stable across opens — so a window keeps its position.
+        var built = [(key: (Int, Int, Int), info: WindowInfo)]()
 
         for axWindow in axWindows {
             guard isStandardWindow(axWindow) else { continue }
@@ -747,6 +754,7 @@ class WindowManager: ObservableObject {
             let minimized = isWindowMinimized(axWindow)
             let spaces = cgID != 0 ? spacesForWindow(cgID) : []
             let spaceID = spaces.first ?? 0
+            let spaceIndex = spaceIndexes[spaceID] ?? 0
             // Unknown Space (empty) is treated as current, so a window is only
             // "other Space" when we positively know its Space isn't visible.
             let onCurrent = spaces.isEmpty || spaces.contains { visibleSpaces.contains($0) }
@@ -769,11 +777,10 @@ class WindowManager: ObservableObject {
 
             let cacheID = cgID != 0 ? cgID : syntheticIDBase + CGWindowID(built.count)
 
-            // Ordering: current-Space windows by z-order, then off-Space, then Dock.
-            let order: Int
-            if let z = zIndex[cgID] { order = z }
-            else if minimized { order = 2_000_000 }
-            else { order = 1_000_000 }
+            let key: (Int, Int, Int)
+            if let z = zIndex[cgID] { key = (0, z, Int(cgID)) }
+            else if minimized { key = (2, spaceIndex, Int(cgID)) }
+            else { key = (1, spaceIndex, Int(cgID)) }
 
             let window = WindowInfo(
                 windowID: cacheID,
@@ -786,15 +793,16 @@ class WindowManager: ObservableObject {
                 isOnOtherSpace: onOtherSpace,
                 cgWindowID: cgID,
                 spaceID: spaceID,
+                spaceIndex: spaceIndex,
                 axElement: axWindow
             )
-            built.append((order, window))
+            built.append((key, window))
         }
 
-        built.sort { $0.order < $1.order }
+        built.sort { $0.key < $1.key }
         for (_, w) in built {
             windows.append(w)
-            Logger.log("   ✅ '\(w.projectName)' wid=\(w.cgWindowID) space=\(w.spaceID) min=\(w.isMinimized) other=\(w.isOnOtherSpace)")
+            Logger.log("   ✅ '\(w.projectName)' wid=\(w.cgWindowID) desktop=\(w.spaceIndex) min=\(w.isMinimized) other=\(w.isOnOtherSpace)")
         }
         return windows
     }
@@ -858,6 +866,56 @@ class WindowManager: ObservableObject {
             }
         }
         return visible
+    }
+
+    /// Map each Space id to its 1-based desktop number, in display + Space order
+    /// (Desktop 1, Desktop 2, …) — matches Mission Control's numbering.
+    private func spaceIndexMap() -> [CGSSpaceID: Int] {
+        var map = [CGSSpaceID: Int]()
+        var index = 1
+        let displays = CGSCopyManagedDisplaySpaces(CGS_CONNECTION) as? [NSDictionary] ?? []
+        for display in displays {
+            if let spaces = display["Spaces"] as? [NSDictionary] {
+                for space in spaces {
+                    if let id = space["id64"] as? CGSSpaceID {
+                        map[id] = index
+                        index += 1
+                    }
+                }
+            }
+        }
+        return map
+    }
+
+    /// Screenshot a window for its thumbnail. Returns nil without Screen Recording
+    /// permission. Uses nominal (≈¼) resolution — plenty for a small preview, fast.
+    static func captureThumbnail(_ wid: CGWindowID) -> NSImage? {
+        var w = wid
+        guard let images = CGSHWCaptureWindowList(
+            CGS_CONNECTION, &w, 1, [.ignoreGlobalClipShape, .nominalResolution]
+        ).takeRetainedValue() as? [CGImage], let cg = images.first else {
+            return nil
+        }
+        return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+    }
+
+    /// Capture window thumbnails in the background and fill them in once the
+    /// switcher is already on screen. Opt-in (showWindowPreviews) and only when
+    /// Screen Recording is granted; otherwise rows keep their app icon.
+    private func captureThumbnailsAsync() {
+        guard settingsManager.settings.showWindowPreviews,
+              CGPreflightScreenCaptureAccess() else { return }
+        let snapshot = windows
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            for (index, window) in snapshot.enumerated() where window.cgWindowID != 0 {
+                guard let image = WindowManager.captureThumbnail(window.cgWindowID) else { continue }
+                DispatchQueue.main.async {
+                    guard let self = self, index < self.windows.count,
+                          self.windows[index].cgWindowID == window.cgWindowID else { return }
+                    self.windows[index].thumbnail = image
+                }
+            }
+        }
     }
 
     /// Window ids for the given Spaces, z-ordered (topmost first). includeInvisible
@@ -1651,7 +1709,10 @@ class WindowManager: ObservableObject {
             if let el = axElement {
                 AXUIElementPerformAction(el, kAXRaiseAction as CFString)
             }
-            NSRunningApplication(processIdentifier: window.processID)?.activate()
+            // Note: deliberately NOT calling NSRunningApplication.activate() here.
+            // The SLPS front-process call already switches Spaces and focuses the
+            // window; an extra activate() re-triggers the Space transition and
+            // makes it visibly stutter (AltTab omits it for the same reason).
             Logger.log("   ✅ SkyLight activation completed (otherSpace=\(window.isOnOtherSpace), minimized=\(window.isMinimized))")
             return
         }

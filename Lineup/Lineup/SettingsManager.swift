@@ -401,6 +401,10 @@ struct AppSettings: Codable {
     // Include windows living on other Spaces / desktops, not just the current one
     var showWindowsFromAllSpaces: Bool
 
+    // Show a live screenshot of each window instead of its app icon
+    // (requires Screen Recording permission; off by default)
+    var showWindowPreviews: Bool
+
     // Switcher position settings
     var switcherVerticalPosition: Double // 0.1 to 0.8, default 0.39 (golden ratio)
     
@@ -409,7 +413,7 @@ struct AppSettings: Codable {
 
     // Color scheme settings
     var colorScheme: ColorScheme
-    
+
     static let `default` = AppSettings(
         modifierKey: .command,
         triggerKey: .grave,
@@ -459,6 +463,8 @@ struct AppSettings: Codable {
         switcherFollowActiveWindow: true,
         // Include windows from all Spaces by default
         showWindowsFromAllSpaces: true,
+        // Window previews are opt-in (need Screen Recording)
+        showWindowPreviews: false,
         // Switcher position default settings
         switcherVerticalPosition: 0.39,
         // Switcher header style default settings
@@ -466,6 +472,35 @@ struct AppSettings: Codable {
         // Color scheme default settings
         colorScheme: .system
     )
+}
+
+// Tolerant decoding: any key missing from saved settings (e.g. a field added in
+// a newer version) falls back to its default, so adding a setting never wipes
+// the user's existing configuration. In an extension so the memberwise init
+// used by `AppSettings.default` is preserved.
+extension AppSettings {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = AppSettings.default
+        self.init(
+            modifierKey: try c.decodeIfPresent(ModifierKey.self, forKey: .modifierKey) ?? d.modifierKey,
+            triggerKey: try c.decodeIfPresent(TriggerKey.self, forKey: .triggerKey) ?? d.triggerKey,
+            appTitleConfigs: try c.decodeIfPresent([String: AppTitleConfig].self, forKey: .appTitleConfigs) ?? d.appTitleConfigs,
+            defaultTitleStrategy: try c.decodeIfPresent(TitleExtractionStrategy.self, forKey: .defaultTitleStrategy) ?? d.defaultTitleStrategy,
+            defaultCustomSeparator: try c.decodeIfPresent(String.self, forKey: .defaultCustomSeparator) ?? d.defaultCustomSeparator,
+            ct2Enabled: try c.decodeIfPresent(Bool.self, forKey: .ct2Enabled) ?? d.ct2Enabled,
+            ct2ModifierKey: try c.decodeIfPresent(ModifierKey.self, forKey: .ct2ModifierKey) ?? d.ct2ModifierKey,
+            ct2TriggerKey: try c.decodeIfPresent(TriggerKey.self, forKey: .ct2TriggerKey) ?? d.ct2TriggerKey,
+            launchAtStartup: try c.decodeIfPresent(Bool.self, forKey: .launchAtStartup) ?? d.launchAtStartup,
+            showNumberKeys: try c.decodeIfPresent(Bool.self, forKey: .showNumberKeys) ?? d.showNumberKeys,
+            switcherFollowActiveWindow: try c.decodeIfPresent(Bool.self, forKey: .switcherFollowActiveWindow) ?? d.switcherFollowActiveWindow,
+            showWindowsFromAllSpaces: try c.decodeIfPresent(Bool.self, forKey: .showWindowsFromAllSpaces) ?? d.showWindowsFromAllSpaces,
+            showWindowPreviews: try c.decodeIfPresent(Bool.self, forKey: .showWindowPreviews) ?? d.showWindowPreviews,
+            switcherVerticalPosition: try c.decodeIfPresent(Double.self, forKey: .switcherVerticalPosition) ?? d.switcherVerticalPosition,
+            switcherHeaderStyle: try c.decodeIfPresent(SwitcherHeaderStyle.self, forKey: .switcherHeaderStyle) ?? d.switcherHeaderStyle,
+            colorScheme: try c.decodeIfPresent(ColorScheme.self, forKey: .colorScheme) ?? d.colorScheme
+        )
+    }
 }
 
 // MARK: - Settings Manager
@@ -565,6 +600,16 @@ class SettingsManager: ObservableObject {
     func updateShowWindowsFromAllSpaces(_ enabled: Bool) {
         settings.showWindowsFromAllSpaces = enabled
         saveSettings()
+    }
+
+    func updateShowWindowPreviews(_ enabled: Bool) {
+        settings.showWindowPreviews = enabled
+        saveSettings()
+        // Prompt for Screen Recording the first time the user opts in; without it
+        // captures return nothing and rows simply keep their app icon.
+        if enabled {
+            CGRequestScreenCaptureAccess()
+        }
     }
     
     // MARK: - Switcher Position Settings

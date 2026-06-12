@@ -1378,6 +1378,16 @@ struct SwitcherPaneView: View {
                     .toggleStyle(.switch)
                     .labelsHidden()
                 }
+                RowDivider()
+                SettingsRow(title: LocalizedStrings.showWindowPreviewsLabel,
+                            subtitle: LocalizedStrings.showWindowPreviewsDescription) {
+                    Toggle("", isOn: Binding(
+                        get: { settingsManager.settings.showWindowPreviews },
+                        set: { settingsManager.updateShowWindowPreviews($0) }
+                    ))
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                }
             }
 
             SettingsSection(title: LocalizedStrings.switcherVerticalPositionLabel) {

@@ -70,6 +70,21 @@ final class SettingsTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(manager.settings.switcherVerticalPosition, 0.1)
     }
 
+    func testDecodingToleratesMissingKeys() throws {
+        // Settings saved by an older version that predates showWindowPreviews.
+        let json = """
+        { "modifierKey": "function", "triggerKey": "Space" }
+        """.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: json)
+        // Present keys win; everything missing falls back to defaults (no throw,
+        // so the user's config is never wiped when a field is added).
+        XCTAssertEqual(decoded.modifierKey, .function)
+        XCTAssertEqual(decoded.triggerKey, .space)
+        XCTAssertFalse(decoded.showWindowPreviews)
+        XCTAssertTrue(decoded.showWindowsFromAllSpaces)
+        XCTAssertEqual(decoded.colorScheme, .system)
+    }
+
     func testCodableRoundTripPreservesAllFields() throws {
         var s = AppSettings.default
         s.showWindowsFromAllSpaces = false

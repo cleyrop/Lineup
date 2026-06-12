@@ -123,6 +123,9 @@ struct LocalizedStrings {
     }
     static let minimizedInDock = "minimized_in_dock".localized
     static let onOtherDesktop = "on_other_desktop".localized
+    static func desktopNumber(_ n: Int) -> String {
+        return "desktop_number".localized(with: n)
+    }
 
     // MARK: - Status Bar
     static let statusItemTooltip = "status_item_tooltip".localized
@@ -339,6 +342,8 @@ struct LocalizedStrings {
     static let followActiveWindowDescription = "follow_active_window_description".localized
     static let showWindowsFromAllSpacesLabel = "show_windows_from_all_spaces_label".localized
     static let showWindowsFromAllSpacesDescription = "show_windows_from_all_spaces_description".localized
+    static let showWindowPreviewsLabel = "show_window_previews_label".localized
+    static let showWindowPreviewsDescription = "show_window_previews_description".localized
 
     // MARK: - Switcher Position Settings
     static let switcherVerticalPositionLabel = "switcher_vertical_position_label".localized

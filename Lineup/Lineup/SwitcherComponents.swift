@@ -371,6 +371,38 @@ struct WindowStateBadge: View {
     }
 }
 
+// MARK: - Window Visual (thumbnail or icon)
+/// Shows a window screenshot when one has been captured (with the app icon as a
+/// small corner badge so the app is still obvious), otherwise the app icon alone.
+struct WindowVisualView: View {
+    let window: WindowInfo
+
+    var body: some View {
+        if let thumbnail = window.thumbnail {
+            ZStack(alignment: .bottomTrailing) {
+                Image(nsImage: thumbnail)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 72, height: 48)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                    )
+                AppIconView(processID: window.processID)
+                    .frame(width: 22, height: 22)
+                    .padding(2)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(.regularMaterial))
+                    .padding(3)
+            }
+            .frame(width: 72, height: 48)
+        } else {
+            AppIconView(processID: window.processID)
+                .frame(width: 48, height: 48)
+        }
+    }
+}
+
 // MARK: - Window Item Content View
 struct WindowItemContentView: View {
     let window: WindowInfo
@@ -385,10 +417,10 @@ struct WindowItemContentView: View {
     
     var body: some View {
         HStack(spacing: 16) {
-            // App icon
-            AppIconView(processID: window.processID)
-                .frame(width: 48, height: 48)
-            
+            // A window screenshot when available (with the app icon as a small
+            // overlay so each row is distinct), otherwise just the app icon.
+            WindowVisualView(window: window)
+
             VStack(alignment: .leading, spacing: 4) {
                 // Project name (main display)
                 Text(window.projectName)
@@ -396,7 +428,7 @@ struct WindowItemContentView: View {
                     .foregroundColor(.primary)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                
+
                 // App name, with a badge for windows in the Dock or on another desktop
                 HStack(spacing: 6) {
                     Text(window.appName)
@@ -409,7 +441,9 @@ struct WindowItemContentView: View {
                                          text: LocalizedStrings.minimizedInDock)
                     } else if window.isOnOtherSpace {
                         WindowStateBadge(systemImage: "macwindow.on.rectangle",
-                                         text: LocalizedStrings.onOtherDesktop)
+                                         text: window.spaceIndex > 0
+                                            ? LocalizedStrings.desktopNumber(window.spaceIndex)
+                                            : LocalizedStrings.onOtherDesktop)
                     }
                 }
 

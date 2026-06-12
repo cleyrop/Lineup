@@ -25,6 +25,22 @@ let CGS_CONNECTION: CGSConnectionID = CGSMainConnectionID()
 @_silgen_name("CGSMainConnectionID")
 func CGSMainConnectionID() -> CGSConnectionID
 
+// MARK: - Window screenshot (for thumbnails)
+
+struct CGSWindowCaptureOptions: OptionSet {
+    let rawValue: UInt32
+    static let ignoreGlobalClipShape = CGSWindowCaptureOptions(rawValue: 1 << 11)
+    static let nominalResolution = CGSWindowCaptureOptions(rawValue: 1 << 9)  // ~1/4 size, fast
+    static let bestResolution = CGSWindowCaptureOptions(rawValue: 1 << 8)
+}
+
+/// Screenshot the given windows. Unlike CGWindowListCreateImage this captures
+/// minimized and other-Space windows. Requires Screen Recording permission to
+/// return real content. * macOS 10.10+
+@_silgen_name("CGSHWCaptureWindowList")
+func CGSHWCaptureWindowList(_ cid: CGSConnectionID, _ windowList: UnsafeMutablePointer<CGWindowID>,
+                            _ windowCount: UInt32, _ options: CGSWindowCaptureOptions) -> Unmanaged<CFArray>
+
 // MARK: - Spaces
 
 /// Array of display dicts; each has a "Spaces" array (each space dict has "id64")
