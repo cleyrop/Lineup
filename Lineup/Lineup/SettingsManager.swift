@@ -488,8 +488,8 @@ struct AppSettings: Codable {
         showWindowsFromAllSpaces: true,
         // Window visual: a colored monogram by default (distinct per window, no permission)
         windowDisplayStyle: .initials,
-        // Smooth cross-desktop transition on by default; peek mode is opt-in
-        followAcrossDesktops: true,
+        // Both off by default — opt-in switcher behaviours
+        followAcrossDesktops: false,
         doubleTapToHold: false,
         // Switcher position default settings
         switcherVerticalPosition: 0.39,
