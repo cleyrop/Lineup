@@ -37,7 +37,7 @@ xcodebuild \
   CODE_SIGN_IDENTITY="" \
   CODE_SIGN_STYLE=Manual \
   DEVELOPMENT_TEAM="" \
-  "${VERSION_ARGS[@]}" \
+  ${VERSION_ARGS[@]+"${VERSION_ARGS[@]}"} \
   build
 
 APP="${DERIVED}/Build/Products/Release/Lineup.app"
