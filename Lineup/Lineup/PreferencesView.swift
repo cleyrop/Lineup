@@ -174,10 +174,21 @@ struct GeneralSettingsSection: View {
 struct PermissionsSettingsSection: View {
     @State private var accessibilityGranted = AXIsProcessTrusted()
     @State private var screenRecordingGranted = CGPreflightScreenCaptureAccess()
+    // Set once the user has clicked a Grant button. A freshly-granted TCC
+    // permission isn't visible to this already-running process (Screen Recording
+    // always needs a relaunch; Accessibility's cached check often does too), so
+    // we surface a one-click restart once they've started granting.
+    @State private var didRequestPermission = false
 
-    // The user grants these in System Settings, outside the app, so poll while
-    // the pane is visible to reflect the change without a relaunch.
+    // Poll while the pane is visible to reflect changes made in System Settings.
     private let refresh = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
+    // Accessibility broadcasts this when its grant flips — refresh instantly.
+    private let axChanged = DistributedNotificationCenter.default()
+        .publisher(for: Notification.Name("com.apple.accessibility.api"))
+
+    private var needsRestart: Bool {
+        didRequestPermission && (!accessibilityGranted || !screenRecordingGranted)
+    }
 
     var body: some View {
         SettingsSection(title: LocalizedStrings.permissionsSectionTitle) {
@@ -193,14 +204,33 @@ struct PermissionsSettingsSection: View {
                 granted: screenRecordingGranted,
                 action: requestScreenRecording
             )
+            if needsRestart {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Image(systemName: "arrow.clockwise.circle")
+                        .foregroundColor(.secondary)
+                    Text(LocalizedStrings.permissionRestartHint)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 8)
+                    Button(LocalizedStrings.permissionRestartButton) { relaunchApp() }
+                        .controlSize(.small)
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 10)
+            }
         }
-        .onReceive(refresh) { _ in
-            accessibilityGranted = AXIsProcessTrusted()
-            screenRecordingGranted = CGPreflightScreenCaptureAccess()
-        }
+        .onReceive(refresh) { _ in refreshStatus() }
+        .onReceive(axChanged) { _ in refreshStatus() }
+    }
+
+    private func refreshStatus() {
+        accessibilityGranted = AXIsProcessTrusted()
+        screenRecordingGranted = CGPreflightScreenCaptureAccess()
     }
 
     private func requestAccessibility() {
+        didRequestPermission = true
         let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
         let prompted = AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
         accessibilityGranted = prompted
@@ -210,6 +240,7 @@ struct PermissionsSettingsSection: View {
     }
 
     private func requestScreenRecording() {
+        didRequestPermission = true
         // Triggers the system prompt the first time; afterward it's a no-op and
         // the user must toggle it in System Settings, so deep-link there too.
         let granted = CGRequestScreenCaptureAccess()
@@ -220,8 +251,17 @@ struct PermissionsSettingsSection: View {
     }
 
     private func openSettings(_ anchor: String) {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(anchor)") {
-            NSWorkspace.shared.open(url)
+        // Ventura+ (macOS 13+) navigates Privacy panes via the PrivacySecurity
+        // extension; the pre-Ventura `com.apple.preference.security` id no longer
+        // jumps to the sub-pane on recent macOS. Try modern first, then fall back.
+        let urls = [
+            "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?\(anchor)",
+            "x-apple.systempreferences:com.apple.preference.security?\(anchor)"
+        ]
+        for string in urls {
+            if let url = URL(string: string), NSWorkspace.shared.open(url) {
+                return
+            }
         }
     }
 }

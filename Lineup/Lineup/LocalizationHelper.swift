@@ -113,6 +113,8 @@ struct LocalizedStrings {
     static let permissionNotGranted = "permission_not_granted".localized
     static let permissionGrantButton = "permission_grant_button".localized
     static let permissionOpenSettingsButton = "permission_open_settings_button".localized
+    static let permissionRestartHint = "permission_restart_hint".localized
+    static let permissionRestartButton = "permission_restart_button".localized
 
     // MARK: - DS2 Window Switcher Interface
     static let windowSwitcherTitle = "window_switcher_title".localized

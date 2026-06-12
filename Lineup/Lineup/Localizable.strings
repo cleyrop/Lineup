@@ -32,6 +32,8 @@
 "permission_not_granted" = "Not granted";
 "permission_grant_button" = "Grant…";
 "permission_open_settings_button" = "Open Settings…";
+"permission_restart_hint" = "If you just enabled a permission, restart Lineup for it to take effect.";
+"permission_restart_button" = "Restart Lineup";
 
 // MARK: - DS2 Window Switcher Interface
 "window_switcher_title" = "Select Window";
